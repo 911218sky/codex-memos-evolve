@@ -1,0 +1,3 @@
+[submodule "vendor/memos"]
+	path = vendor/memos
+	url = https://github.com/usememos/memos

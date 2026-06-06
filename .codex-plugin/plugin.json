@@ -1,0 +1,24 @@
+{
+  "name": "codex-memos-evolve",
+  "version": "0.1.0+codex.20260606080314",
+  "description": "Reflect2Evolve-style Codex memory plugin backed by usememos/memos.",
+  "author": {
+    "name": "911218sky"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Memos Evolve",
+    "shortDescription": "Turn Codex task traces into reusable policies and skills stored in Memos.",
+    "longDescription": "Codex Memos Evolve gives Codex a Memos-backed memory loop inspired by Reflect2Evolve: recall compact guidance before work, record task traces, promote repeated lessons into policies, and crystallize stable policies into reusable skills.",
+    "developerName": "911218sky",
+    "category": "Productivity",
+    "capabilities": [
+      "Memos-backed long-term memory",
+      "Trace to policy promotion",
+      "Skill crystallization",
+      "Token-aware recall"
+    ],
+    "defaultPrompt": "Use Memos Evolve to recall relevant memory before work and record durable lessons after work."
+  },
+  "mcpServers": "./.mcp.json"
+}

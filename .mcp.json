@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "codex-memos-evolve": {
+      "command": "node",
+      "args": [
+        "./src/mcp-server.mjs"
+      ],
+      "env": {
+        "MEMOS_BASE_URL": "http://localhost:5230",
+        "MEMOS_EVOLVE_LOCAL_FILE": "./.data/local-memos.json"
+      },
+      "env_vars": [
+        "MEMOS_PAT",
+        "MEMOS_BASE_URL",
+        "MEMOS_EVOLVE_LOCAL_FILE"
+      ]
+    }
+  }
+}
