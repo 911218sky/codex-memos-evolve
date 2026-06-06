@@ -5,7 +5,7 @@ This guide installs Codex Memos Evolve against the existing workspace usememos/m
 ## Requirements
 
 - Bun 1.3 or newer
-- Existing local Memos service
+- Existing local Memos service installed from `https://github.com/usememos/memos`
 - Codex with MCP plugin support
 
 Check the local toolchain:
@@ -22,9 +22,18 @@ cd codex-memos-evolve
 bun install
 ```
 
-## Start Existing Memos
+## Install Or Start Memos
 
-Set `MEMOS_HOME` to your local Memos installation:
+Memos is an external prerequisite. `codex-memos-evolve` does not vendor, build, or install Memos.
+
+If Memos is not installed yet, install it from the upstream repository first:
+
+```text
+https://github.com/usememos/memos
+```
+
+Follow the upstream Memos installation instructions. After Memos is installed, set `MEMOS_HOME` to your local Memos installation if your setup provides helper scripts:
+
 
 ```bash
 export MEMOS_HOME="/path/to/memos"
@@ -72,20 +81,21 @@ View logs:
 
 In the Memos web UI, create a personal access token for Codex.
 
-Then export:
-
-```bash
-export MEMOS_BASE_URL="http://localhost:5230"
-export MEMOS_PAT="replace-with-your-personal-access-token"
-```
-
-You can create a local `.env` from the example:
+Then create a local `.env` from the example:
 
 ```bash
 cp .env.example .env
+$EDITOR .env
 ```
 
-Do not commit the real token. `.env` is ignored by git.
+Set:
+
+```dotenv
+MEMOS_BASE_URL=http://localhost:5230
+MEMOS_PAT=<your-personal-access-token>
+```
+
+The plugin reads `.env` from the plugin root. Environment variables are still supported and override `.env` values. Do not commit the real token; `.env` is ignored by git.
 
 ## Run Validation
 
@@ -165,43 +175,17 @@ Useful filters:
 #status/active
 ```
 
-## Upstream Memos Submodule
+## Explicit Local Mode
 
-The upstream usememos/memos source is referenced at:
+`MEMOS_PAT` is required by default. If it is missing, the plugin fails fast so Codex does not silently write memory outside Memos.
 
-```text
-vendor/memos
-```
-
-It points to:
-
-```text
-https://github.com/usememos/memos
-```
-
-After a fresh clone:
-
-```bash
-git submodule update --init --recursive
-```
-
-Update the submodule:
-
-```bash
-git submodule update --remote --merge vendor/memos
-```
-
-Runtime does not build from this submodule by default. Runtime uses the local Memos service you configure with `MEMOS_BASE_URL`.
-
-## Local Fallback Mode
-
-If `MEMOS_PAT` is not set, the plugin writes to:
+For tests and offline development only, set `MEMOS_EVOLVE_FORCE_LOCAL=1`. Explicit local mode writes to:
 
 ```text
 .data/local-memos.json
 ```
 
-This is useful for tests and offline development. It does not provide the Memos web UI.
+This does not provide the Memos web UI and should not be treated as durable workspace memory.
 
 ## Current Limitation
 

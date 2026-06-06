@@ -102,22 +102,21 @@ This runs local smoke tests, MCP smoke tests, and the project scoring script. Fo
 - `memos_evolve_feedback`: records rating and comment, rejects secret-looking content, and affects later recall scoring.
 - `memos_evolve_stats`: reports trace, policy, skill, feedback, environment counts, and a compression estimate.
 
-Use local fallback tests when no real Memos token is available:
+Use explicit local tests when no real Memos token is available:
 
 ```bash
 MEMOS_EVOLVE_FORCE_LOCAL=1 bun run validate
 ```
 
-For real Memos integration checks, start the workspace Memos service, export `MEMOS_BASE_URL` and `MEMOS_PAT` in the shell that starts Codex or the MCP server, run validation, then verify the created tagged records in the Memos UI. Never print or commit the token.
+For real Memos integration checks, start the workspace Memos service, configure `MEMOS_BASE_URL` and `MEMOS_PAT` in the plugin root `.env` file or in the shell that starts Codex/MCP, run validation, then verify the created tagged records in the Memos UI. Never print or commit the token.
 
-## Fallback Without MEMOS_PAT
+## Missing MEMOS_PAT
 
-`MEMOS_PAT` is required for real Memos storage. If it is missing, the plugin uses local JSON storage, normally `.data/local-memos.json`, or the path in `MEMOS_EVOLVE_LOCAL_FILE`.
+`MEMOS_PAT` is required for normal storage. It may come from the plugin root `.env` file or from the process environment. If it is missing, the plugin fails fast instead of silently writing local JSON records.
 
-When fallback is active:
+Use local JSON only for intentional development or tests by setting `MEMOS_EVOLVE_FORCE_LOCAL=1`. When explicit local mode is active:
 
 - Treat it as development or test storage only.
 - Tell the user that records will not appear in the Memos web UI.
 - Do not claim long-term workspace memory was updated unless the record reached the real Memos server.
-- Prefer `MEMOS_EVOLVE_FORCE_LOCAL=1` for intentional local tests.
 - If the task requires durable memory, ask the user to provide or configure a valid `MEMOS_PAT`; do not store the token in markdown, memos, command transcripts, or committed files.

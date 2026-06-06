@@ -15,6 +15,26 @@ function memoIdFromName(name?: string): string {
   return String(name).split("/").pop() || "";
 }
 
+function loadDotEnv(file: string): Record<string, string> {
+  if (!fs.existsSync(file)) return {};
+  const values: Record<string, string> = {};
+  for (const rawLine of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const match = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(line);
+    if (!match) continue;
+    const key = match[1];
+    const rawValue = match[2];
+    if (!key || rawValue === undefined) continue;
+    let value = rawValue.trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    values[key] = value;
+  }
+  return values;
+}
+
 export class MemosClient {
   readonly baseUrl: string;
   readonly token: string;
@@ -22,10 +42,15 @@ export class MemosClient {
   readonly forceLocal: boolean;
 
   constructor(options: MemosClientOptions = {}) {
-    this.baseUrl = normalizeBaseUrl(options.baseUrl || process.env.MEMOS_BASE_URL);
-    this.token = options.token || process.env.MEMOS_PAT || "";
-    this.localFile = path.resolve(options.localFile || process.env.MEMOS_EVOLVE_LOCAL_FILE || "./.data/local-memos.json");
-    this.forceLocal = Boolean(options.forceLocal || process.env.MEMOS_EVOLVE_FORCE_LOCAL === "1");
+    const dotEnv = loadDotEnv(path.resolve(options.envFile || ".env"));
+    this.baseUrl = normalizeBaseUrl(options.baseUrl || process.env.MEMOS_BASE_URL || dotEnv.MEMOS_BASE_URL);
+    this.token = options.token || process.env.MEMOS_PAT || dotEnv.MEMOS_PAT || "";
+    this.localFile = path.resolve(options.localFile || process.env.MEMOS_EVOLVE_LOCAL_FILE || dotEnv.MEMOS_EVOLVE_LOCAL_FILE || "./.data/local-memos.json");
+    this.forceLocal = Boolean(options.forceLocal || process.env.MEMOS_EVOLVE_FORCE_LOCAL === "1" || dotEnv.MEMOS_EVOLVE_FORCE_LOCAL === "1");
+
+    if (!this.token && !this.forceLocal) {
+      throw new Error("MEMOS_PAT is required for codex-memos-evolve. Set MEMOS_EVOLVE_FORCE_LOCAL=1 only for explicit local development or tests.");
+    }
   }
 
   get mode(): StorageMode {

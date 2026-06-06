@@ -17,6 +17,7 @@ export interface MemosClientOptions {
   token?: string;
   localFile?: string;
   forceLocal?: boolean;
+  envFile?: string;
 }
 
 export interface TraceInput {

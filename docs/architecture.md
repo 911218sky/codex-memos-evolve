@@ -23,10 +23,9 @@ Memos is both the backing store and the first visible UI.
 | --- | --- |
 | `src/mcp-server.ts` | Registers MCP tools and validates tool input with Zod. |
 | `src/evolver.ts` | Implements recall, trace recording, reflection, feedback, and stats. |
-| `src/memos-client.ts` | Talks to usememos/memos or falls back to local JSON storage. |
+| `src/memos-client.ts` | Talks to usememos/memos or explicit local JSON storage for tests. |
 | `skills/memos-evolve/SKILL.md` | Tells Codex when to use the memory loop. |
 | Local Memos service | Existing Memos service configured by `MEMOS_BASE_URL`, commonly on port `5230`. |
-| `vendor/memos` | Upstream usememos/memos source as a git submodule. |
 
 ## Memory Layers
 
@@ -66,22 +65,26 @@ Feedback records whether a memory, policy, or skill was useful, wrong, stale, to
 
 When both variables are set, the plugin writes to usememos/memos:
 
-```bash
+```dotenv
 MEMOS_BASE_URL=http://localhost:5230
 MEMOS_PAT=...
 ```
+
+The client reads the plugin root `.env` file and also supports process environment variables. Process environment variables take precedence.
 
 This mode provides durable storage and a visible web UI.
 
 ### Local JSON Mode
 
-When `MEMOS_PAT` is missing, the plugin writes to:
+`MEMOS_PAT` is required by default. Missing it is a configuration error.
+
+For tests and local development only, set `MEMOS_EVOLVE_FORCE_LOCAL=1`. Explicit local mode writes to:
 
 ```text
 .data/local-memos.json
 ```
 
-This mode is intended for tests and local development only.
+This mode is intended for tests and local development only, and records will not appear in the Memos web UI.
 
 ## Tag Model
 

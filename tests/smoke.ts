@@ -6,6 +6,38 @@ import { MemosClient } from "../src/memos-client.ts";
 import { EvolveEngine } from "../src/evolver.ts";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-memos-evolve-"));
+
+const originalMemosPat = process.env.MEMOS_PAT;
+const originalMemosBaseUrl = process.env.MEMOS_BASE_URL;
+const originalForceLocal = process.env.MEMOS_EVOLVE_FORCE_LOCAL;
+delete process.env.MEMOS_PAT;
+delete process.env.MEMOS_BASE_URL;
+delete process.env.MEMOS_EVOLVE_FORCE_LOCAL;
+assert.throws(
+  () => new MemosClient({ envFile: path.join(dir, "missing.env"), localFile: path.join(dir, "should-not-exist.json") }),
+  /MEMOS_PAT is required/
+);
+const envFile = path.join(dir, ".env");
+fs.writeFileSync(envFile, "MEMOS_BASE_URL=http://memos.test:5230\nMEMOS_PAT=from-dotenv\n");
+const dotEnvClient = new MemosClient({ envFile });
+assert.equal(dotEnvClient.baseUrl, "http://memos.test:5230");
+assert.equal(dotEnvClient.mode, "memos-api");
+if (originalMemosPat === undefined) {
+  delete process.env.MEMOS_PAT;
+} else {
+  process.env.MEMOS_PAT = originalMemosPat;
+}
+if (originalMemosBaseUrl === undefined) {
+  delete process.env.MEMOS_BASE_URL;
+} else {
+  process.env.MEMOS_BASE_URL = originalMemosBaseUrl;
+}
+if (originalForceLocal === undefined) {
+  delete process.env.MEMOS_EVOLVE_FORCE_LOCAL;
+} else {
+  process.env.MEMOS_EVOLVE_FORCE_LOCAL = originalForceLocal;
+}
+
 const client = new MemosClient({ forceLocal: true, localFile: path.join(dir, "memos.json") });
 const engine = new EvolveEngine(client);
 

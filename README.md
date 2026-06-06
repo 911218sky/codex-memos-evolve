@@ -7,7 +7,7 @@ This project is designed for local development workflows where Codex should reme
 ```text
 Codex
   -> MCP tools
-  -> usememos/memos API or local JSON fallback
+  -> usememos/memos API
   -> trace -> policy -> skill -> compact recall
 ```
 
@@ -19,13 +19,12 @@ Implemented:
 
 - Codex plugin manifest and MCP server.
 - usememos/memos client with personal access token support.
-- Local JSON fallback for offline tests and development.
+- Explicit local JSON mode for offline tests and development.
 - Task trace recording.
 - Repeated-trace reflection into policy and skill memos.
 - Feedback recording and recall-aware feedback scoring.
 - Token-budgeted recall with stale, secret, and low-value memory suppression.
 - Integration with an existing local Memos service.
-- Upstream `usememos/memos` source reference as a git submodule.
 - Smoke tests, MCP smoke test, and project scoring script.
 
 Not implemented yet:
@@ -63,6 +62,14 @@ Start your local Memos service:
 $MEMOS_HOME/bin/start.sh
 ```
 
+If Memos is not installed yet, install it from the upstream repository first:
+
+```text
+https://github.com/usememos/memos
+```
+
+Follow the upstream Memos installation instructions, then make sure the web UI is reachable at `http://localhost:5230` or set `MEMOS_BASE_URL` to your Memos URL.
+
 Open the Memos UI:
 
 ```text
@@ -71,12 +78,14 @@ http://localhost:5230
 
 Create the first account, then create a personal access token in the Memos web UI.
 
-Export the connection settings before starting Codex or the MCP server:
+Create a local `.env` before starting Codex or the MCP server:
 
 ```bash
-export MEMOS_BASE_URL="http://localhost:5230"
-export MEMOS_PAT="replace-with-your-personal-access-token"
+cp .env.example .env
+$EDITOR .env
 ```
+
+Set `MEMOS_PAT` in `.env` to the personal access token from the Memos web UI.
 
 Run validation:
 
@@ -114,18 +123,28 @@ When run directly, the server speaks MCP over stdio and waits for an MCP client.
 
 Runtime storage uses a Memos server configured with:
 
-```bash
+```dotenv
 MEMOS_BASE_URL=http://localhost:5230
 MEMOS_PAT=...
 ```
 
-If `MEMOS_PAT` is missing, the plugin falls back to local development storage at:
+The plugin reads these values from the plugin root `.env` file, or from environment variables passed by the process that starts Codex. Environment variables override `.env` values.
+
+`MEMOS_PAT` is required by default. If it is missing, the MCP server fails fast instead of silently writing somewhere else.
+
+For explicit local tests or development only, set:
+
+```bash
+MEMOS_EVOLVE_FORCE_LOCAL=1
+```
+
+That mode writes local development storage at:
 
 ```text
 .data/local-memos.json
 ```
 
-That fallback is useful for tests, but it is not a replacement for the Memos UI.
+Local mode is useful for tests, but it is not a replacement for the Memos UI.
 
 ## Memory Tags
 
@@ -172,33 +191,10 @@ A dedicated dashboard can be added later on top of the same tags and API.
 .mcp.json                   MCP server configuration
 src/mcp-server.ts          MCP tool definitions
 src/evolver.ts             Recall, reflection, feedback, and stats logic
-src/memos-client.ts        Memos API client and local fallback
+src/memos-client.ts        Memos API client and explicit local test mode
 skills/memos-evolve/        Codex workflow instructions
 docs/                       Installation, architecture, review, and scoring notes
 tests/                      Local smoke and MCP smoke tests
-vendor/memos                usememos/memos git submodule
-```
-
-## Upstream Memos Source
-
-The upstream Memos repository is referenced as a git submodule:
-
-```text
-vendor/memos -> https://github.com/usememos/memos
-```
-
-The plugin does not build Memos from this submodule by default. Runtime uses the local Memos service you configure with `MEMOS_BASE_URL`; the submodule is kept as a readable upstream source reference.
-
-Initialize the submodule after cloning:
-
-```bash
-git submodule update --init --recursive
-```
-
-Update the submodule reference:
-
-```bash
-git submodule update --remote --merge vendor/memos
 ```
 
 ## Documentation
@@ -230,6 +226,7 @@ python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "
 ## Security Notes
 
 - Do not commit `MEMOS_PAT`.
+- Do not commit `.env`; use `.env.example` for safe placeholders.
 - Do not store bearer tokens, cookies, API keys, or private credentials in memos.
 - The plugin rejects obvious secret-looking trace and feedback content before storage.
 - Explicit user instructions always outrank recalled memory.

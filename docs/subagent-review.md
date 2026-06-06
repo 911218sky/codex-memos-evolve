@@ -9,7 +9,7 @@ Score: **6.6/10**
 Summary:
 
 - The project is a working trace -> policy -> skill prototype, not merely a Memos client.
-- MCP tools, Memos-backed persistence, compact recall, local fallback, smoke tests, and Codex skill workflow are present.
+- MCP tools, Memos-backed persistence, compact recall, explicit local test mode, smoke tests, and Codex skill workflow are present.
 
 Top gaps reported:
 

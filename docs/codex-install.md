@@ -30,19 +30,27 @@ http://localhost:5230
 
 Use the existing Memos account and create a personal access token if needed.
 
-## 3. Export Runtime Environment
+## 3. Configure Runtime Environment
 
-Codex must be able to pass these variables to the MCP server:
+Create a local `.env` in the plugin root:
 
 ```bash
-export MEMOS_BASE_URL="http://localhost:5230"
-export MEMOS_PAT="replace-with-your-personal-access-token"
-export MEMOS_EVOLVE_LOCAL_FILE="$PWD/.data/local-memos.json"
+cp .env.example .env
+$EDITOR .env
 ```
 
-`MEMOS_PAT` is required for real Memos storage. Without it, the plugin falls back to local JSON storage and the records will not appear in the Memos web UI.
+Set:
 
-Do not commit the real token.
+```dotenv
+MEMOS_BASE_URL=http://localhost:5230
+MEMOS_PAT=<your-personal-access-token>
+```
+
+The MCP server reads `.env` from the plugin root. Codex can also pass real environment variables; those override `.env` values.
+
+`MEMOS_PAT` is required. Without it, the plugin fails fast instead of silently writing local JSON records that will not appear in the Memos web UI.
+
+Do not commit the real token. `.env` is ignored by git.
 
 ## 4. Install Or Load The Plugin In Codex
 
@@ -170,6 +178,7 @@ Search:
 If no records appear:
 
 - Confirm `MEMOS_PAT` is exported in the environment where Codex starts.
+- Confirm `.env` exists in the plugin root if you are not exporting variables.
 - Confirm `MEMOS_BASE_URL` is `http://localhost:5230`.
 - Confirm the Memos container is running.
 - Run `bun run mcp:smoke` from the plugin root.
@@ -195,10 +204,10 @@ Check MCP smoke:
 bun run mcp:smoke
 ```
 
-Check local fallback data:
+Check explicit local test data only when `MEMOS_EVOLVE_FORCE_LOCAL=1` was intentionally set:
 
 ```text
 .data/local-memos.json
 ```
 
-If fallback data exists but Memos has no records, Codex likely started without `MEMOS_PAT`.
+If local data exists but Memos has no records, Codex was likely started in explicit local mode.
