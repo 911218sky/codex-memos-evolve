@@ -24,7 +24,7 @@ Implemented:
 - Repeated-trace reflection into policy and skill memos.
 - Feedback recording and recall-aware feedback scoring.
 - Token-budgeted recall with stale, secret, and low-value memory suppression.
-- Integration with the existing workspace Memos service at `/home/sbplab/sky/.tools/memos`.
+- Integration with an existing local Memos service.
 - Upstream `usememos/memos` source reference as a git submodule.
 - Smoke tests, MCP smoke test, and project scoring script.
 
@@ -52,14 +52,15 @@ The recall path favors compact policies and skills over raw traces, so repeated 
 Install dependencies:
 
 ```bash
-cd /home/sbplab/sky/codex-memos-evolve
-npm install
+git clone https://github.com/911218sky/codex-memos-evolve.git
+cd codex-memos-evolve
+bun install
 ```
 
-Start the existing workspace Memos service:
+Start your local Memos service:
 
 ```bash
-/home/sbplab/sky/.tools/memos/bin/start.sh
+$MEMOS_HOME/bin/start.sh
 ```
 
 Open the Memos UI:
@@ -80,13 +81,13 @@ export MEMOS_PAT="replace-with-your-personal-access-token"
 Run validation:
 
 ```bash
-npm run validate
+bun run validate
 ```
 
 Install or load the plugin in Codex:
 
 ```bash
-python3 /home/sbplab/sky/.tools/codex/config/skills/.system/plugin-creator/scripts/validate_plugin.py /home/sbplab/sky/codex-memos-evolve
+python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
 ```
 
 Then follow the Codex-side installation notes in [Codex Installation](docs/codex-install.md).
@@ -94,7 +95,7 @@ Then follow the Codex-side installation notes in [Codex Installation](docs/codex
 Run the MCP server manually:
 
 ```bash
-npm start
+bun start
 ```
 
 When run directly, the server speaks MCP over stdio and waits for an MCP client.
@@ -169,9 +170,9 @@ A dedicated dashboard can be added later on top of the same tags and API.
 ```text
 .codex-plugin/plugin.json   Codex plugin manifest
 .mcp.json                   MCP server configuration
-src/mcp-server.mjs          MCP tool definitions
-src/evolver.mjs             Recall, reflection, feedback, and stats logic
-src/memos-client.mjs        Memos API client and local fallback
+src/mcp-server.ts          MCP tool definitions
+src/evolver.ts             Recall, reflection, feedback, and stats logic
+src/memos-client.ts        Memos API client and local fallback
 skills/memos-evolve/        Codex workflow instructions
 docs/                       Installation, architecture, review, and scoring notes
 tests/                      Local smoke and MCP smoke tests
@@ -186,7 +187,7 @@ The upstream Memos repository is referenced as a git submodule:
 vendor/memos -> https://github.com/usememos/memos
 ```
 
-The plugin does not build Memos from this submodule by default. Runtime uses the existing workspace Memos service in `/home/sbplab/sky/.tools/memos`; the submodule is kept as a readable upstream source reference.
+The plugin does not build Memos from this submodule by default. Runtime uses the local Memos service you configure with `MEMOS_BASE_URL`; the submodule is kept as a readable upstream source reference.
 
 Initialize the submodule after cloning:
 
@@ -211,7 +212,7 @@ git submodule update --remote --merge vendor/memos
 ## Verification
 
 ```bash
-npm run validate
+bun run validate
 ```
 
 This runs:
@@ -223,7 +224,7 @@ This runs:
 Codex plugin manifest validation:
 
 ```bash
-python3 /home/sbplab/sky/.tools/codex/config/skills/.system/plugin-creator/scripts/validate_plugin.py /home/sbplab/sky/codex-memos-evolve
+python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
 ```
 
 ## Security Notes

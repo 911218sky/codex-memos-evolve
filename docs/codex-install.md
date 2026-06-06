@@ -5,21 +5,21 @@ This guide explains how to make Codex use `codex-memos-evolve` with the existing
 ## 1. Prepare The Project
 
 ```bash
-cd /home/sbplab/sky/codex-memos-evolve
-npm install
-npm run validate
+cd /path/to/codex-memos-evolve
+bun install
+bun run validate
 ```
 
 Validate the plugin manifest:
 
 ```bash
-python3 /home/sbplab/sky/.tools/codex/config/skills/.system/plugin-creator/scripts/validate_plugin.py /home/sbplab/sky/codex-memos-evolve
+python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
 ```
 
 ## 2. Start Existing Memos
 
 ```bash
-/home/sbplab/sky/.tools/memos/bin/start.sh
+"$MEMOS_HOME/bin/start.sh"
 ```
 
 Open:
@@ -37,7 +37,7 @@ Codex must be able to pass these variables to the MCP server:
 ```bash
 export MEMOS_BASE_URL="http://localhost:5230"
 export MEMOS_PAT="replace-with-your-personal-access-token"
-export MEMOS_EVOLVE_LOCAL_FILE="/home/sbplab/sky/codex-memos-evolve/.data/local-memos.json"
+export MEMOS_EVOLVE_LOCAL_FILE="$PWD/.data/local-memos.json"
 ```
 
 `MEMOS_PAT` is required for real Memos storage. Without it, the plugin falls back to local JSON storage and the records will not appear in the Memos web UI.
@@ -49,13 +49,13 @@ Do not commit the real token.
 The plugin root is:
 
 ```text
-/home/sbplab/sky/codex-memos-evolve
+/path/to/codex-memos-evolve
 ```
 
 The Codex plugin manifest is:
 
 ```text
-/home/sbplab/sky/codex-memos-evolve/.codex-plugin/plugin.json
+/path/to/codex-memos-evolve/.codex-plugin/plugin.json
 ```
 
 The manifest points Codex to:
@@ -77,8 +77,8 @@ The MCP server command declared by the plugin is:
 
 ```json
 {
-  "command": "node",
-  "args": ["./src/mcp-server.mjs"]
+  "command": "bun",
+  "args": ["./src/mcp-server.ts"]
 }
 ```
 
@@ -89,14 +89,14 @@ Codex should run that command from the plugin root.
 If Codex cannot load the plugin UI yet, you can still verify the MCP server directly:
 
 ```bash
-cd /home/sbplab/sky/codex-memos-evolve
-npm run mcp:smoke
+cd /path/to/codex-memos-evolve
+bun run mcp:smoke
 ```
 
 For a manual stdio server run:
 
 ```bash
-npm start
+bun start
 ```
 
 The process will wait for an MCP client.
@@ -172,7 +172,7 @@ If no records appear:
 - Confirm `MEMOS_PAT` is exported in the environment where Codex starts.
 - Confirm `MEMOS_BASE_URL` is `http://localhost:5230`.
 - Confirm the Memos container is running.
-- Run `npm run mcp:smoke` from the plugin root.
+- Run `bun run mcp:smoke` from the plugin root.
 
 ## 9. Troubleshooting
 
@@ -180,25 +180,25 @@ Check Memos:
 
 ```bash
 docker ps --filter name=sky-memos
-/home/sbplab/sky/.tools/memos/bin/logs.sh
+"$MEMOS_HOME/bin/logs.sh"
 ```
 
 Check plugin validation:
 
 ```bash
-python3 /home/sbplab/sky/.tools/codex/config/skills/.system/plugin-creator/scripts/validate_plugin.py /home/sbplab/sky/codex-memos-evolve
+python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
 ```
 
 Check MCP smoke:
 
 ```bash
-npm run mcp:smoke
+bun run mcp:smoke
 ```
 
 Check local fallback data:
 
 ```text
-/home/sbplab/sky/codex-memos-evolve/.data/local-memos.json
+.data/local-memos.json
 ```
 
 If fallback data exists but Memos has no records, Codex likely started without `MEMOS_PAT`.

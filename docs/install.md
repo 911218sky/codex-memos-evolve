@@ -4,37 +4,36 @@ This guide installs Codex Memos Evolve against the existing workspace usememos/m
 
 ## Requirements
 
-- Node.js 18 or newer
-- npm
-- Existing Memos service at `/home/sbplab/sky/.tools/memos`
+- Bun 1.3 or newer
+- Existing local Memos service
 - Codex with MCP plugin support
 
 Check the local toolchain:
 
 ```bash
-node --version
-npm --version
+bun --version
 ```
 
 ## Install Dependencies
 
 ```bash
-cd /home/sbplab/sky/codex-memos-evolve
-npm install
+git clone https://github.com/911218sky/codex-memos-evolve.git
+cd codex-memos-evolve
+bun install
 ```
 
 ## Start Existing Memos
 
-This workspace already runs Memos from:
+Set `MEMOS_HOME` to your local Memos installation:
 
-```text
-/home/sbplab/sky/.tools/memos
+```bash
+export MEMOS_HOME="/path/to/memos"
 ```
 
 Start it with:
 
 ```bash
-/home/sbplab/sky/.tools/memos/bin/start.sh
+"$MEMOS_HOME/bin/start.sh"
 ```
 
 Open the web UI:
@@ -54,19 +53,19 @@ It uses:
 ```text
 image: neosmemo/memos:stable
 port: 5230
-data: /home/sbplab/sky/.tools/memos/data -> /var/opt/memos
+data: $MEMOS_HOME/data -> /var/opt/memos
 ```
 
 Stop Memos:
 
 ```bash
-/home/sbplab/sky/.tools/memos/bin/stop.sh
+"$MEMOS_HOME/bin/stop.sh"
 ```
 
 View logs:
 
 ```bash
-/home/sbplab/sky/.tools/memos/bin/logs.sh
+"$MEMOS_HOME/bin/logs.sh"
 ```
 
 ## Create A Personal Access Token
@@ -91,31 +90,31 @@ Do not commit the real token. `.env` is ignored by git.
 ## Run Validation
 
 ```bash
-npm run validate
+bun run validate
 ```
 
 Expected checks:
 
-- `npm run smoke`
-- `npm run mcp:smoke`
-- `npm run score`
+- `bun run smoke`
+- `bun run mcp:smoke`
+- `bun run score`
 
 Validate the Codex plugin manifest:
 
 ```bash
-python3 /home/sbplab/sky/.tools/codex/config/skills/.system/plugin-creator/scripts/validate_plugin.py /home/sbplab/sky/codex-memos-evolve
+python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
 ```
 
 ## Run MCP Server Manually
 
 ```bash
-npm start
+bun start
 ```
 
 The server speaks MCP over stdio, so it will wait for an MCP client. For a direct local check, use:
 
 ```bash
-npm run mcp:smoke
+bun run mcp:smoke
 ```
 
 ## Codex Plugin Files
@@ -126,7 +125,7 @@ The project is structured as a Codex plugin:
 .codex-plugin/plugin.json
 .mcp.json
 skills/memos-evolve/SKILL.md
-src/mcp-server.mjs
+src/mcp-server.ts
 ```
 
 The MCP server exposes:
@@ -192,7 +191,7 @@ Update the submodule:
 git submodule update --remote --merge vendor/memos
 ```
 
-Runtime does not build from this submodule by default. Runtime uses the existing workspace Memos service in `/home/sbplab/sky/.tools/memos`.
+Runtime does not build from this submodule by default. Runtime uses the local Memos service you configure with `MEMOS_BASE_URL`.
 
 ## Local Fallback Mode
 

@@ -88,10 +88,10 @@ A useful evolved skill should:
 
 ## Testing MCP Tools
 
-When changing `codex-memos-evolve`, validate both the engine and the MCP surface from `/home/sbplab/sky/codex-memos-evolve`:
+When changing `codex-memos-evolve`, validate both the engine and the MCP surface from the plugin repository root:
 
 ```bash
-npm run validate
+bun run validate
 ```
 
 This runs local smoke tests, MCP smoke tests, and the project scoring script. For MCP-specific changes, make sure the smoke path lists and exercises all five tools:
@@ -105,7 +105,7 @@ This runs local smoke tests, MCP smoke tests, and the project scoring script. Fo
 Use local fallback tests when no real Memos token is available:
 
 ```bash
-MEMOS_EVOLVE_FORCE_LOCAL=1 npm run validate
+MEMOS_EVOLVE_FORCE_LOCAL=1 bun run validate
 ```
 
 For real Memos integration checks, start the workspace Memos service, export `MEMOS_BASE_URL` and `MEMOS_PAT` in the shell that starts Codex or the MCP server, run validation, then verify the created tagged records in the Memos UI. Never print or commit the token.

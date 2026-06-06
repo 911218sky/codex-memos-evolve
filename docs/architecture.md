@@ -1,6 +1,6 @@
 # Architecture
 
-Codex Memos Evolve is a local MCP plugin that stores durable agent memory in usememos/memos. The implementation is intentionally small: MCP tool definitions live in `src/mcp-server.mjs`, memory behavior lives in `src/evolver.mjs`, and persistence lives in `src/memos-client.mjs`.
+Codex Memos Evolve is a local MCP plugin that stores durable agent memory in usememos/memos. The implementation is intentionally small: MCP tool definitions live in `src/mcp-server.ts`, memory behavior lives in `src/evolver.ts`, and persistence lives in `src/memos-client.ts`.
 
 ## High-Level Flow
 
@@ -21,11 +21,11 @@ Memos is both the backing store and the first visible UI.
 
 | Component | Responsibility |
 | --- | --- |
-| `src/mcp-server.mjs` | Registers MCP tools and validates tool input with Zod. |
-| `src/evolver.mjs` | Implements recall, trace recording, reflection, feedback, and stats. |
-| `src/memos-client.mjs` | Talks to usememos/memos or falls back to local JSON storage. |
+| `src/mcp-server.ts` | Registers MCP tools and validates tool input with Zod. |
+| `src/evolver.ts` | Implements recall, trace recording, reflection, feedback, and stats. |
+| `src/memos-client.ts` | Talks to usememos/memos or falls back to local JSON storage. |
 | `skills/memos-evolve/SKILL.md` | Tells Codex when to use the memory loop. |
-| `/home/sbplab/sky/.tools/memos` | Existing workspace Memos service on port `5230`. |
+| Local Memos service | Existing Memos service configured by `MEMOS_BASE_URL`, commonly on port `5230`. |
 | `vendor/memos` | Upstream usememos/memos source as a git submodule. |
 
 ## Memory Layers

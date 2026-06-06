@@ -1,9 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { MemosClient } from "./memos-client.mjs";
-import { EvolveEngine } from "./evolver.mjs";
+import { MemosClient } from "./memos-client.ts";
+import { EvolveEngine } from "./evolver.ts";
 
 const client = new MemosClient();
 const engine = new EvolveEngine(client);
@@ -73,11 +73,11 @@ server.tool(
 const transport = new StdioServerTransport();
 await server.connect(transport);
 
-function jsonResult(value) {
+function jsonResult(value: unknown) {
   return {
     content: [
       {
-        type: "text",
+        type: "text" as const,
         text: JSON.stringify(value, null, 2)
       }
     ]

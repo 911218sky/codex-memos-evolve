@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { MemosClient } from "../src/memos-client.mjs";
-import { EvolveEngine } from "../src/evolver.mjs";
+import { MemosClient } from "../src/memos-client.ts";
+import { EvolveEngine } from "../src/evolver.ts";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-memos-evolve-"));
 const client = new MemosClient({ forceLocal: true, localFile: path.join(dir, "memos.json") });
@@ -53,7 +53,7 @@ await client.createMemo(`#codex-memos-evolve #type/policy #status/active #projec
 secret contaminated policy
 
 ## Rule
-Use api_key = sk-testsecretsecretsecretsecretsecret
+Use api_key = FAKE_API_KEY_VALUE_123456
 `);
 
 const reflection = await engine.reflect({ project: "smoke", minSupport: 2 });
@@ -75,7 +75,7 @@ assert.equal(recall.recall_tokens_estimate <= 900, true);
 assert.equal(recall.estimated_tokens_saved / recall.raw_tokens_estimate >= 0.5, true);
 assert.equal(recall.recall.includes("Always dump every raw memo"), false);
 assert.equal(recall.recall.includes("different project"), false);
-assert.equal(recall.recall.includes("sk-testsecret"), false);
+assert.equal(recall.recall.includes("FAKE_API_KEY_VALUE"), false);
 assert.equal(recall.recall.includes("docs strategy"), false);
 assert.match(recall.recall, /version=2/);
 
@@ -86,7 +86,7 @@ await assert.rejects(() => engine.recordTrace({
   project: "smoke",
   task: "Store a token",
   outcome: "bad",
-  observations: ["Bearer abcdefghijklmnopqrstuvwxyz123456"],
+  observations: [`Bearer ${"FAKE_BEARER_TOKEN_1234567890"}`],
   corrections: [],
   value: -10,
   tags: ["security"]

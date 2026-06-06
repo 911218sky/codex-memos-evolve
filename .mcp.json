@@ -1,9 +1,9 @@
 {
   "mcpServers": {
     "codex-memos-evolve": {
-      "command": "node",
+      "command": "bun",
       "args": [
-        "./src/mcp-server.mjs"
+        "./src/mcp-server.ts"
       ],
       "env": {
         "MEMOS_BASE_URL": "http://localhost:5230",

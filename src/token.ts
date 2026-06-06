@@ -1,4 +1,4 @@
-export function estimateTokens(text) {
+export function estimateTokens(text: string): number {
   if (!text) return 0;
   const asciiWords = text.match(/[A-Za-z0-9_]+/g)?.length ?? 0;
   const cjkChars = text.match(/[\u3400-\u9fff]/g)?.length ?? 0;
@@ -6,14 +6,14 @@ export function estimateTokens(text) {
   return Math.ceil(asciiWords * 1.25 + cjkChars * 0.75 + other / 4);
 }
 
-export function truncateByTokens(text, maxTokens) {
+export function truncateByTokens(text: string, maxTokens: number): string {
   if (estimateTokens(text) <= maxTokens) return text;
   const approxChars = Math.max(120, Math.floor(maxTokens * 3.2));
   return `${text.slice(0, approxChars).trim()}\n[truncated to ${maxTokens} token budget]`;
 }
 
-export function compactLines(lines, maxTokens) {
-  const kept = [];
+export function compactLines(lines: string[], maxTokens: number): string[] {
+  const kept: string[] = [];
   let used = 0;
   for (const line of lines.filter(Boolean)) {
     const cost = estimateTokens(line);

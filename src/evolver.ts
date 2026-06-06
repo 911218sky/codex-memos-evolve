@@ -1,58 +1,69 @@
-import { DEFAULT_MAX_RECALL_TOKENS, DEFAULT_PROJECT, STATUS_TAGS, TYPE_TAGS } from "./constants.mjs";
-import { feedbackMemo, policyMemo, projectTag, skillMemo, skillTag, slug, traceMemo } from "./format.mjs";
-import { compactLines, estimateTokens, truncateByTokens } from "./token.mjs";
+import { DEFAULT_MAX_RECALL_TOKENS, DEFAULT_PROJECT, STATUS_TAGS, TYPE_TAGS } from "./constants.ts";
+import { feedbackMemo, policyMemo, projectTag, skillMemo, skillTag, slug, traceMemo } from "./format.ts";
+import { MemosClient } from "./memos-client.ts";
+import { compactLines, estimateTokens, truncateByTokens } from "./token.ts";
+import type {
+  FeedbackInput,
+  MemoRecord,
+  MemoryCounts,
+  PromotionResult,
+  RecallInput,
+  ReflectInput,
+  StatsInput,
+  TraceInput
+} from "./types.ts";
 
-function contentOf(memo) {
+function contentOf(memo: MemoRecord): string {
   return memo.content || memo.snippet || "";
 }
 
-function has(content, tag) {
+function has(content: string, tag: string): boolean {
   return content.includes(tag);
 }
 
-function isActive(content) {
+function isActive(content: string): boolean {
   return content.includes(STATUS_TAGS.active) && !content.includes(STATUS_TAGS.superseded);
 }
 
-function looksSecret(content) {
+function looksSecret(content = ""): boolean {
   return /(sk-[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9._-]{20,}|api[_-]?key\s*[:=]\s*[A-Za-z0-9._-]{16,})/i.test(content);
 }
 
-function extractSection(content, heading) {
+function extractSection(content: string, heading: string): string {
   const pattern = new RegExp(`## ${heading}\\n([\\s\\S]*?)(?=\\n## |$)`, "i");
   return content.match(pattern)?.[1]?.trim() || "";
 }
 
-function extractSupport(content) {
+function extractSupport(content: string): number {
   const match = content.match(/#support\/(\d+)/);
   return match ? Number(match[1]) : 1;
 }
 
-function extractVersion(content) {
+function extractVersion(content: string): number {
   const match = content.match(/#version\/(\d+)/);
   return match ? Number(match[1]) : 1;
 }
 
-function extractSkillSlug(content) {
+function extractSkillSlug(content: string): string {
   return content.match(/#skill\/([a-z0-9\u3400-\u9fff-]+)/)?.[1] || "";
 }
 
-function extractRating(content) {
+function extractRating(content: string): number {
   const match = content.match(/#rating\/(-?\d+)/);
   return match ? Number(match[1]) : 0;
 }
 
-function extractTarget(content) {
+function extractTarget(content: string): string {
   return content.match(/#target\/([a-z0-9\u3400-\u9fff-]+)/)?.[1] || "";
 }
 
-function shouldSkipRecall(task) {
+function shouldSkipRecall(task: string): boolean {
   const text = String(task || "").trim().toLowerCase();
   return /^(what time is it\??|time\??|date\??|pwd|ls|hello|hi|ping)$/i.test(text);
 }
 
-function topicCandidates(text) {
-  const tags = [...text.matchAll(/#topic\/([a-z0-9\u3400-\u9fff-]+)/g)].map((m) => m[1]);
+function topicCandidates(text: string): string[] {
+  const tags = [...text.matchAll(/#topic\/([a-z0-9\u3400-\u9fff-]+)/g)].map((m) => m[1]).filter((tag): tag is string => Boolean(tag));
   if (tags.length) return tags;
   const task = extractSection(text, "Task") || text;
   const words = task
@@ -61,7 +72,7 @@ function topicCandidates(text) {
   return words.slice(0, 3);
 }
 
-function deriveLesson(traces) {
+function deriveLesson(traces: MemoRecord[]): string {
   const corrections = traces
     .map((memo) => extractSection(contentOf(memo), "Corrections"))
     .filter((text) => text && !text.includes("- None"));
@@ -77,7 +88,7 @@ function deriveLesson(traces) {
     .join(" ");
 }
 
-function evidenceFor(traces) {
+function evidenceFor(traces: MemoRecord[]): string[] {
   return traces.slice(0, 5).map((memo) => {
     const task = extractSection(contentOf(memo), "Task").replace(/\s+/g, " ").slice(0, 160);
     const value = extractSection(contentOf(memo), "Value");
@@ -86,11 +97,13 @@ function evidenceFor(traces) {
 }
 
 export class EvolveEngine {
-  constructor(client) {
+  readonly client: MemosClient;
+
+  constructor(client: MemosClient) {
     this.client = client;
   }
 
-  async recall({ task, project = DEFAULT_PROJECT, maxTokens = DEFAULT_MAX_RECALL_TOKENS }) {
+  async recall({ task, project = DEFAULT_PROJECT, maxTokens = DEFAULT_MAX_RECALL_TOKENS }: RecallInput) {
     if (shouldSkipRecall(task)) {
       return {
         mode: this.client.mode,
@@ -151,7 +164,7 @@ export class EvolveEngine {
     };
   }
 
-  async recordTrace(input) {
+  async recordTrace(input: TraceInput) {
     const content = traceMemo(input);
     if (looksSecret(content)) {
       throw new Error("Refusing to store trace because it appears to contain a secret or API token.");
@@ -160,7 +173,7 @@ export class EvolveEngine {
     return { created: memo.name || memo.id, mode: this.client.mode };
   }
 
-  async reflect({ project = DEFAULT_PROJECT, minSupport = 2 } = {}) {
+  async reflect({ project = DEFAULT_PROJECT, minSupport = 2 }: ReflectInput = {}) {
     const memos = await this.client.listPluginMemos(500);
     const projectMemos = memos.filter((memo) => contentOf(memo).includes(projectTag(project)));
     const traces = projectMemos.filter((memo) => {
@@ -168,15 +181,15 @@ export class EvolveEngine {
       return has(content, TYPE_TAGS.trace) && isActive(content) && !looksSecret(content);
     });
     const existingSkills = projectMemos.filter((memo) => has(contentOf(memo), TYPE_TAGS.skill));
-    const byTopic = new Map();
+    const byTopic = new Map<string, MemoRecord[]>();
     for (const trace of traces) {
       for (const topic of topicCandidates(contentOf(trace)).slice(0, 2)) {
         if (!byTopic.has(topic)) byTopic.set(topic, []);
-        byTopic.get(topic).push(trace);
+        byTopic.get(topic)?.push(trace);
       }
     }
 
-    const promoted = [];
+    const promoted: PromotionResult[] = [];
     for (const [topic, topicTraces] of byTopic.entries()) {
       if (topicTraces.length < minSupport) continue;
       const prior = existingSkills
@@ -220,7 +233,7 @@ export class EvolveEngine {
     };
   }
 
-  async feedback({ project = DEFAULT_PROJECT, target, rating, comment }) {
+  async feedback({ project = DEFAULT_PROJECT, target, rating, comment = "" }: FeedbackInput) {
     if (looksSecret(comment)) {
       throw new Error("Refusing to store feedback because it appears to contain a secret or API token.");
     }
@@ -228,10 +241,10 @@ export class EvolveEngine {
     return { created: memo.name || memo.id, mode: this.client.mode };
   }
 
-  async stats({ project = DEFAULT_PROJECT } = {}) {
+  async stats({ project = DEFAULT_PROJECT }: StatsInput = {}) {
     const memos = await this.client.listPluginMemos(500);
     const projectMemos = memos.filter((memo) => contentOf(memo).includes(projectTag(project)));
-    const counts = { trace: 0, policy: 0, skill: 0, feedback: 0, environment: 0 };
+    const counts: MemoryCounts = { trace: 0, policy: 0, skill: 0, feedback: 0, environment: 0 };
     for (const memo of projectMemos) {
       const content = contentOf(memo);
       if (has(content, TYPE_TAGS.trace)) counts.trace += 1;
@@ -256,8 +269,8 @@ export class EvolveEngine {
   }
 }
 
-function dedupe(memos) {
-  const seen = new Set();
+function dedupe(memos: MemoRecord[]): MemoRecord[] {
+  const seen = new Set<string | number>();
   return memos.filter((memo) => {
     const key = memo.name || memo.id || contentOf(memo);
     if (seen.has(key)) return false;
@@ -266,16 +279,16 @@ function dedupe(memos) {
   });
 }
 
-function bySupport(a, b) {
+function bySupport(a: MemoRecord, b: MemoRecord): number {
   return extractSupport(contentOf(b)) - extractSupport(contentOf(a));
 }
 
-function byVersion(a, b) {
+function byVersion(a: MemoRecord, b: MemoRecord): number {
   return extractVersion(contentOf(b)) - extractVersion(contentOf(a));
 }
 
-function feedbackIndex(feedbacks) {
-  const scores = new Map();
+function feedbackIndex(feedbacks: MemoRecord[]): Map<string, number> {
+  const scores = new Map<string, number>();
   for (const memo of feedbacks) {
     const content = contentOf(memo);
     const target = extractTarget(content);
@@ -285,8 +298,8 @@ function feedbackIndex(feedbacks) {
   return scores;
 }
 
-function latestBySkill(memos, feedbackScore) {
-  const groups = new Map();
+function latestBySkill(memos: MemoRecord[], feedbackScore: Map<string, number>): MemoRecord[] {
+  const groups = new Map<string, MemoRecord>();
   for (const memo of memos) {
     const content = contentOf(memo);
     const slugName = extractSkillSlug(content) || slug(extractSection(content, "Skill") || extractSection(content, "Policy"));
@@ -297,19 +310,19 @@ function latestBySkill(memos, feedbackScore) {
   return [...groups.values()];
 }
 
-function byRecallScore(feedbackScore, task) {
+function byRecallScore(feedbackScore: Map<string, number>, task: string) {
   const taskTerms = new Set(topicCandidates(task || ""));
-  return (a, b) => recallScore(b, feedbackScore, taskTerms) - recallScore(a, feedbackScore, taskTerms);
+  return (a: MemoRecord, b: MemoRecord) => recallScore(b, feedbackScore, taskTerms) - recallScore(a, feedbackScore, taskTerms);
 }
 
-function recallScore(memo, feedbackScore, taskTerms) {
+function recallScore(memo: MemoRecord, feedbackScore: Map<string, number>, taskTerms: Set<string>): number {
   const content = contentOf(memo);
   const slugName = extractSkillSlug(content);
   const relevance = slugName && taskTerms.has(slugName) ? 10 : 0;
   return extractSupport(content) * 2 + extractVersion(content) + (feedbackScore.get(slugName) || 0) * 3 + relevance;
 }
 
-function summarizeMemo(memo, label) {
+function summarizeMemo(memo: MemoRecord, label: string): string {
   const content = contentOf(memo);
   const title = extractSection(content, label) || extractSection(content, "Policy") || extractSection(content, "Task") || content;
   const support = extractSupport(content);
