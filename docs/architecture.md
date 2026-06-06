@@ -1,161 +1,94 @@
 # Architecture
 
-Codex Memos Evolve is a local MCP plugin that stores durable agent memory in usememos/memos. The implementation is intentionally small: MCP tool definitions live in `src/mcp-server.ts`, memory behavior lives in `src/evolver.ts`, and persistence lives in `src/memos-client.ts`.
+Codex Memos Evolve has three moving parts:
 
-## High-Level Flow
+1. Codex calls MCP tools.
+2. The MCP server reads and writes Memos records.
+3. Future recall returns compact policies and skills.
+
+![Codex Memos Evolve architecture](../assets/codex-memos-evolve-architecture.png)
+
+In the diagram, external MCP tools such as filesystem, search, or git are examples of the wider Codex tool environment. This plugin provides the five memory tools listed in the README.
+
+## Flow
 
 ```text
 Codex task
-  -> memos_evolve_recall
-  -> compact policies and skills
-  -> Codex work
-  -> memos_evolve_record_trace
-  -> memos_evolve_reflect
-  -> policy and skill memos
-  -> future recall
+  -> recall useful memory
+  -> do the work
+  -> record a trace
+  -> reflect repeated traces
+  -> reuse policies and skills later
 ```
-
-Memos is both the backing store and the first visible UI.
 
 ## Components
 
-| Component | Responsibility |
+| Component | Role |
 | --- | --- |
-| `src/mcp-server.ts` | Registers MCP tools and validates tool input with Zod. |
-| `src/evolver.ts` | Implements recall, trace recording, reflection, feedback, and stats. |
-| `src/memos-client.ts` | Talks to usememos/memos or explicit local JSON storage for tests. |
+| `src/mcp-server.ts` | Defines the five MCP tools and validates inputs. |
+| `src/evolver.ts` | Handles recall, trace recording, reflection, feedback, and stats. |
+| `src/memos-client.ts` | Connects to Memos or explicit local JSON test storage. |
 | `skills/memos-evolve/SKILL.md` | Tells Codex when to use the memory loop. |
-| Local Memos service | Existing Memos service configured by `MEMOS_BASE_URL`, commonly on port `5230`. |
+| Memos | Stores tagged Markdown records and provides the visible UI. |
 
 ## Memory Layers
 
-### Trace
+| Layer | Meaning | Why it exists |
+| --- | --- | --- |
+| Trace | A short record of one task. | Keeps evidence grounded. |
+| Policy | A lesson repeated across traces. | Turns repeated corrections into rules. |
+| Skill | A reusable workflow distilled from policies. | Gives Codex compact guidance. |
+| Feedback | A rating or correction about memory quality. | Suppresses stale, wrong, broad, or noisy memory. |
 
-A trace is a grounded task record. It should contain concrete evidence from work that happened:
+Recall prefers skills and policies over raw traces because they are shorter and easier to act on.
 
-- task
-- outcome
-- observations
-- corrections
-- value score
-- project
-- topic tags
+Example: a policy might say "prefer `rg` for repository search." A skill might describe the full review workflow that uses search, file reads, tests, and a final summary.
 
-Trace records are useful, but they are too verbose to recall forever.
+## Storage
 
-### Policy
-
-A policy is promoted from repeated traces. It captures a recurring rule or preference that should influence future work.
-
-Policies include support counts so users can see why the rule exists.
-
-### Skill
-
-A skill is a reusable workflow distilled from stable policies. Recall prefers skills and policies over raw traces because they are shorter and more actionable.
-
-Skill memos are not automatically installed as Codex skill folders yet. They are stored in Memos as structured Markdown.
-
-### Feedback
-
-Feedback records whether a memory, policy, or skill was useful, wrong, stale, too broad, or too noisy. Recall uses feedback scoring to suppress poor targets and favor useful ones.
-
-## Storage Modes
-
-### Memos API Mode
-
-When both variables are set, the plugin writes to usememos/memos:
+Normal storage uses Memos:
 
 ```dotenv
 MEMOS_BASE_URL=http://localhost:5230
 MEMOS_PAT=...
 ```
 
-The client reads the plugin root `.env` file and also supports process environment variables. Process environment variables take precedence.
+The client reads `.env` from the current working directory first, then from the plugin root. Real process environment variables override `.env`.
 
-This mode provides durable storage and a visible web UI.
+For tests only:
 
-### Local JSON Mode
-
-`MEMOS_PAT` is required by default. Missing it is a configuration error.
-
-For tests and local development only, set `MEMOS_EVOLVE_FORCE_LOCAL=1`. Explicit local mode writes to:
-
-```text
-.data/local-memos.json
+```bash
+MEMOS_EVOLVE_FORCE_LOCAL=1
 ```
 
-This mode is intended for tests and local development only, and records will not appear in the Memos web UI.
+That writes local JSON records to `.data/local-memos.json`. It is useful for tests, but it is not the durable Memos UI.
 
-## Tag Model
+## Tags
 
-All records include:
+Every record includes:
 
 ```text
 #codex-memos-evolve
 #project/<project-name>
+#type/trace | #type/policy | #type/skill | #type/feedback
 ```
 
-Type tags:
+Active promoted records may also include:
 
 ```text
-#type/trace
-#type/policy
-#type/skill
-#type/feedback
-```
-
-Promotion tags:
-
-```text
+#status/active
 #support/<n>
 #version/<n>
 #skill/<slug>
-#status/active
 ```
 
-## Recall Rules
+## Safety
 
-Recall is designed to keep memory bounded:
+Memory is context, not an instruction source. User instructions and system rules always win.
 
-- Prefer active skills and policies over raw traces.
-- Rank by project relevance, topic relevance, support, version, and feedback.
-- Suppress stale or negatively rated targets.
-- Suppress secret-looking content.
-- Enforce the caller's token budget.
-- Skip retrieval for trivial tasks when appropriate.
+The plugin also avoids obvious secret leakage:
 
-The goal is not to remember everything. The goal is to return the smallest useful guidance for the current task.
-
-## Reflection Rules
-
-Reflection looks for repeated traces with enough support. When `minSupport` is reached, the engine can create:
-
-- a policy memo
-- a skill memo
-
-This creates a visible chain:
-
-```text
-trace evidence -> policy -> skill -> future recall
-```
-
-## Safety Model
-
-Memory is lower priority than explicit user instructions. Recalled guidance must be treated as project context, not as a command.
-
-The plugin avoids common secret leakage paths:
-
-- `MEMOS_PAT` is not stored in documentation.
-- `.env` is gitignored.
-- secret-looking traces and feedback are rejected before storage.
-- secret-looking recall candidates are suppressed.
-
-## Current Extension Points
-
-Useful next steps:
-
-- Add automatic lifecycle invocation when Codex exposes stable hooks for this workflow.
-- Add a dashboard that reads the same Memos tags.
-- Add embeddings or LLM clustering for stronger reflection.
-- Add archival or superseding operations in Memos instead of retrieval-time suppression only.
-- Add generated skill installation into Codex's real skill directories.
+- `.env` is ignored by git.
+- `MEMOS_PAT` is not stored in docs.
+- Secret-looking traces and feedback are rejected.
+- Secret-looking recall candidates are suppressed.

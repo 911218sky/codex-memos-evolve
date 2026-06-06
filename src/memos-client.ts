@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { MemoRecord, MemosClientOptions, StorageMode } from "./types.ts";
+
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -35,6 +38,25 @@ function loadDotEnv(file: string): Record<string, string> {
   return values;
 }
 
+function findDotEnv(explicitFile?: string): { file: string; values: Record<string, string> } {
+  if (explicitFile) {
+    const file = path.resolve(explicitFile);
+    return { file, values: loadDotEnv(file) };
+  }
+
+  for (const file of [path.resolve(".env"), path.join(PROJECT_ROOT, ".env")]) {
+    const values = loadDotEnv(file);
+    if (Object.keys(values).length > 0) return { file, values };
+  }
+
+  return { file: path.resolve(".env"), values: {} };
+}
+
+function resolveConfiguredPath(value: string | undefined, baseDir: string): string {
+  if (!value) return path.resolve("./.data/local-memos.json");
+  return path.isAbsolute(value) ? value : path.resolve(baseDir, value);
+}
+
 export class MemosClient {
   readonly baseUrl: string;
   readonly token: string;
@@ -42,10 +64,15 @@ export class MemosClient {
   readonly forceLocal: boolean;
 
   constructor(options: MemosClientOptions = {}) {
-    const dotEnv = loadDotEnv(path.resolve(options.envFile || ".env"));
+    const { file: dotEnvFile, values: dotEnv } = findDotEnv(options.envFile);
+    const dotEnvDir = path.dirname(dotEnvFile);
     this.baseUrl = normalizeBaseUrl(options.baseUrl || process.env.MEMOS_BASE_URL || dotEnv.MEMOS_BASE_URL);
     this.token = options.token || process.env.MEMOS_PAT || dotEnv.MEMOS_PAT || "";
-    this.localFile = path.resolve(options.localFile || process.env.MEMOS_EVOLVE_LOCAL_FILE || dotEnv.MEMOS_EVOLVE_LOCAL_FILE || "./.data/local-memos.json");
+    this.localFile = options.localFile
+      ? path.resolve(options.localFile)
+      : process.env.MEMOS_EVOLVE_LOCAL_FILE
+        ? path.resolve(process.env.MEMOS_EVOLVE_LOCAL_FILE)
+        : resolveConfiguredPath(dotEnv.MEMOS_EVOLVE_LOCAL_FILE, dotEnvDir);
     this.forceLocal = Boolean(options.forceLocal || process.env.MEMOS_EVOLVE_FORCE_LOCAL === "1" || dotEnv.MEMOS_EVOLVE_FORCE_LOCAL === "1");
 
     if (!this.token && !this.forceLocal) {

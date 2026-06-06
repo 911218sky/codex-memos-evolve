@@ -1,70 +1,57 @@
 # Subagent Review
 
-Two independent subagents reviewed the project after the first working implementation.
+This file records independent review feedback and what changed afterward.
 
-## Reflect2Evolve Closeness
+## First Review
 
-Score: **6.6/10**
+Two subagents reviewed the first working implementation.
 
-Summary:
+| Question | Score | Summary |
+| --- | ---: | --- |
+| Is it close to Reflect2Evolve? | 6.6/10 | It has trace -> policy -> skill behavior, but promotion is still simple. |
+| Is token saving credible? | 7/10 | Recall is compact and tested, but ranking is heuristic. |
 
-- The project is a working trace -> policy -> skill prototype, not merely a Memos client.
-- MCP tools, Memos-backed persistence, compact recall, explicit local test mode, smoke tests, and Codex skill workflow are present.
+## Main Issues Found
 
-Top gaps reported:
+- Feedback was recorded but not used enough.
+- Old versions could compete with newer versions.
+- Recall relevance was basic.
+- Secret prevention needed to happen before storage too.
+- Generated skills were Memos records, not installed Codex skills.
+- Lifecycle calls were manual, not automatic.
 
-- Feedback was recorded but not used.
-- Policy induction was shallow.
-- Old versions could remain active and compete.
-- L3/world-model memory was mostly absent.
-- Generated skills were memo records, not installed Codex skills.
-- Lifecycle invocation was manual.
-- Observability was basic.
+## Fixes Already Made
 
-Follow-up fixes already made after this review:
-
-- Feedback ratings now affect policy/skill recall.
-- Negative feedback can suppress a target from recall.
-- Recall keeps only the latest version per skill slug.
-- Secret-looking trace/feedback content is rejected before storage.
-- Trivial tasks can skip recall.
-
-Remaining major gaps:
-
-- L3 world-model generation is still not implemented.
-- Old versions are not patched or archived inside Memos; latest-version recall suppresses older versions at retrieval time.
-- Generated skill memos are not written as installed Codex skill files.
-- Lifecycle is still skill-guided, not automatic hooks.
-
-## Token-Saving Credibility
-
-Score: **7/10**
-
-Summary:
-
-- The project has capped recall, raw-vs-compact token estimates, local replay tests, Memos API support, MCP smoke coverage, stale/project/secret suppression, and validation wiring.
-
-Top gaps reported:
-
-- Recall relevance was weak.
-- Feedback was recorded but not used.
-- Old versions stayed active.
-- Token saving was estimated but not enforced by a minimum savings test.
-- Memos search could be brittle.
-- No trivial-task retrieval gate existed.
-- Secret prevention was recall-side only.
-
-Follow-up fixes already made after this review:
-
-- Recall now includes feedback-aware scoring.
-- Recall now prefers task-relevant skill slugs and higher support/version.
-- Smoke tests now assert at least 50% compact-recall savings over naive candidates.
-- MCP smoke tests cover the trivial-task gate.
+- Feedback now affects recall scoring.
+- Negative feedback can suppress recall targets.
+- Recall keeps the latest version per skill slug.
 - Secret-looking traces and feedback are rejected before storage.
+- Secret-looking recall candidates are suppressed.
+- Smoke tests check compact recall savings.
+- MCP smoke tests cover the trivial-task gate.
 
-Remaining major gaps:
+## Remaining Gaps
 
-- Ranking is still heuristic rather than embedding or LLM based.
-- There is no long-history 100-500 trace stress test yet.
-- Real usememos/memos API integration is implemented but not tested against a live authenticated server in CI.
-- Feedback affects recall, but it does not yet trigger in-place Memos updates, archive operations, or full policy rewrites.
+- No L3 world-model memory.
+- No in-place Memos archive or supersede operation yet.
+- No automatic installation of generated skill files.
+- No long-history stress test.
+- No live authenticated Memos test in CI.
+
+## Current Readability Review
+
+After the documentation refresh, subagents should check:
+
+- Can a new user explain what the plugin does in one minute?
+- Can an installer find the exact `.env`, validate, and Codex refresh steps?
+- Is the architecture understandable from the image plus short tables?
+- Are troubleshooting steps direct enough for `MCP startup incomplete`?
+
+## 2026-06-06 Readability Review
+
+Two subagents simulated human readers after the docs were simplified.
+
+| Reader | Result | Follow-up added |
+| --- | --- | --- |
+| New Codex user | README explains the plugin in about one minute. | Added bridge text for MemOS, `sky-tools`, MCP tool usage, and policy-vs-skill examples. |
+| Plugin installer | Install docs are scannable, but MCP startup troubleshooting needed clearer decisions. | Added smoke-test result tables, plugin-root checks, and missing-tool pointers. |

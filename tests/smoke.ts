@@ -22,6 +22,19 @@ fs.writeFileSync(envFile, "MEMOS_BASE_URL=http://memos.test:5230\nMEMOS_PAT=from
 const dotEnvClient = new MemosClient({ envFile });
 assert.equal(dotEnvClient.baseUrl, "http://memos.test:5230");
 assert.equal(dotEnvClient.mode, "memos-api");
+
+const originalCwd = process.cwd();
+const cwdEnvDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-memos-evolve-cwd-"));
+fs.writeFileSync(path.join(cwdEnvDir, ".env"), "MEMOS_BASE_URL=http://cwd-memos.test:5230\nMEMOS_PAT=from-cwd-dotenv\nMEMOS_EVOLVE_LOCAL_FILE=relative-memos.json\n");
+try {
+  process.chdir(cwdEnvDir);
+  const cwdDotEnvClient = new MemosClient();
+  assert.equal(cwdDotEnvClient.baseUrl, "http://cwd-memos.test:5230");
+  assert.equal(cwdDotEnvClient.localFile, path.join(cwdEnvDir, "relative-memos.json"));
+} finally {
+  process.chdir(originalCwd);
+}
+
 if (originalMemosPat === undefined) {
   delete process.env.MEMOS_PAT;
 } else {

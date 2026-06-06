@@ -1,20 +1,29 @@
 # Installation
 
-This guide installs Codex Memos Evolve against the existing workspace usememos/memos server.
+Use this guide when you want to run the plugin against a real Memos server.
 
-## Requirements
+## 1. Check Requirements
+
+You need:
 
 - Bun 1.3 or newer
-- Existing local Memos service installed from `https://github.com/usememos/memos`
 - Codex with MCP plugin support
+- A running Memos server
+- A Memos personal access token
 
-Check the local toolchain:
+Check Bun:
 
 ```bash
 bun --version
 ```
 
-## Install Dependencies
+Check that your Codex CLI has plugin commands:
+
+```bash
+codex plugin --help
+```
+
+## 2. Install The Plugin
 
 ```bash
 git clone https://github.com/911218sky/codex-memos-evolve.git
@@ -22,66 +31,33 @@ cd codex-memos-evolve
 bun install
 ```
 
-## Install Or Start Memos
+## 3. Start Memos
 
-Memos is an external prerequisite. `codex-memos-evolve` does not vendor, build, or install Memos.
-
-If Memos is not installed yet, install it from the upstream repository first:
+Memos is an external dependency. Install it from:
 
 ```text
 https://github.com/usememos/memos
 ```
 
-Follow the upstream Memos installation instructions. After Memos is installed, set `MEMOS_HOME` to your local Memos installation if your setup provides helper scripts:
-
-
-```bash
-export MEMOS_HOME="/path/to/memos"
-```
-
-Start it with:
-
-```bash
-"$MEMOS_HOME/bin/start.sh"
-```
-
-Open the web UI:
+Then open the web UI:
 
 ```text
 http://localhost:5230
 ```
 
-The existing container is named:
-
-```text
-sky-memos
-```
-
-It uses:
-
-```text
-image: neosmemo/memos:stable
-port: 5230
-data: $MEMOS_HOME/data -> /var/opt/memos
-```
-
-Stop Memos:
+If this workspace uses the existing `sky-memos` setup, the usual helper commands are:
 
 ```bash
+"$MEMOS_HOME/bin/start.sh"
+"$MEMOS_HOME/bin/logs.sh"
 "$MEMOS_HOME/bin/stop.sh"
 ```
 
-View logs:
+## 4. Create `.env`
 
-```bash
-"$MEMOS_HOME/bin/logs.sh"
-```
+Create a Memos personal access token in the Memos web UI. In most Memos builds, open your user settings or profile menu, then look for the access token section. The token is the value used for `MEMOS_PAT`.
 
-## Create A Personal Access Token
-
-In the Memos web UI, create a personal access token for Codex.
-
-Then create a local `.env` from the example:
+Then configure the plugin:
 
 ```bash
 cp .env.example .env
@@ -95,19 +71,20 @@ MEMOS_BASE_URL=http://localhost:5230
 MEMOS_PAT=<your-personal-access-token>
 ```
 
-The plugin reads `.env` from the plugin root. Environment variables are still supported and override `.env` values. Do not commit the real token; `.env` is ignored by git.
+Do not commit `.env`. It is ignored by git.
 
-## Run Validation
+## 5. Validate
 
 ```bash
 bun run validate
 ```
 
-Expected checks:
+This runs:
 
-- `bun run smoke`
-- `bun run mcp:smoke`
-- `bun run score`
+- TypeScript typecheck
+- local smoke test
+- MCP smoke test
+- project score script
 
 Validate the Codex plugin manifest:
 
@@ -115,50 +92,35 @@ Validate the Codex plugin manifest:
 python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
 ```
 
-## Run MCP Server Manually
+If `CODEX_HOME` is not set, it usually means your Codex configuration directory. Common values are `~/.codex` or a workspace-specific Codex home such as `/home/sbplab/sky/.tools/codex/config`.
 
-```bash
-bun start
-```
+## 6. Manual MCP Check
 
-The server speaks MCP over stdio, so it will wait for an MCP client. For a direct local check, use:
+For the MCP path only:
 
 ```bash
 bun run mcp:smoke
 ```
 
-## Codex Plugin Files
+If Codex reports MCP startup incomplete, continue with [Codex Installation](codex-install.md#5-if-mcp-startup-is-incomplete).
 
-The project is structured as a Codex plugin:
+For a raw stdio server:
 
-```text
-.codex-plugin/plugin.json
-.mcp.json
-skills/memos-evolve/SKILL.md
-src/mcp-server.ts
+```bash
+bun start
 ```
 
-The MCP server exposes:
+`bun start` waits for an MCP client, so no prompt is expected.
 
-```text
-memos_evolve_recall
-memos_evolve_record_trace
-memos_evolve_reflect
-memos_evolve_feedback
-memos_evolve_stats
-```
+## 7. View Records
 
-For the Codex-side installation flow, see [Codex Installation](codex-install.md).
-
-## Use The Memory Viewer
-
-Open:
+Open Memos:
 
 ```text
 http://localhost:5230
 ```
 
-Search for:
+Search:
 
 ```text
 #codex-memos-evolve
@@ -175,18 +137,14 @@ Useful filters:
 #status/active
 ```
 
-## Explicit Local Mode
+## Local Test Mode
 
-`MEMOS_PAT` is required by default. If it is missing, the plugin fails fast so Codex does not silently write memory outside Memos.
+Normal mode requires `MEMOS_PAT`.
 
-For tests and offline development only, set `MEMOS_EVOLVE_FORCE_LOCAL=1`. Explicit local mode writes to:
+Use local JSON only for tests or offline development:
 
-```text
-.data/local-memos.json
+```bash
+MEMOS_EVOLVE_FORCE_LOCAL=1 bun run validate
 ```
 
-This does not provide the Memos web UI and should not be treated as durable workspace memory.
-
-## Current Limitation
-
-Codex does not automatically call task-start and task-end lifecycle hooks for this project yet. The included `memos-evolve` skill describes when Codex should call recall, trace recording, reflection, feedback, and stats.
+Local records are written to `.data/local-memos.json` and will not appear in the Memos web UI.

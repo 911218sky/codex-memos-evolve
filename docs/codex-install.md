@@ -1,87 +1,112 @@
 # Codex Installation
 
-This guide explains how to make Codex use `codex-memos-evolve` with the existing workspace Memos service.
+Use this guide when Memos and the plugin already validate locally, but Codex still needs to load the plugin.
 
-## 1. Prepare The Project
+## 1. Validate First
+
+From the plugin root:
 
 ```bash
-cd /path/to/codex-memos-evolve
 bun install
 bun run validate
 ```
 
-Validate the plugin manifest:
+Validate the manifest:
 
 ```bash
 python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
 ```
 
-## 2. Start Existing Memos
+If `CODEX_HOME` is not set, use the Codex home for the Codex process you are testing. For this workspace, that is usually `/home/sbplab/sky/.tools/codex/config`.
 
-```bash
-"$MEMOS_HOME/bin/start.sh"
-```
+## 2. Confirm `.env`
 
-Open:
-
-```text
-http://localhost:5230
-```
-
-Use the existing Memos account and create a personal access token if needed.
-
-## 3. Configure Runtime Environment
-
-Create a local `.env` in the plugin root:
-
-```bash
-cp .env.example .env
-$EDITOR .env
-```
-
-Set:
+The plugin root must contain:
 
 ```dotenv
 MEMOS_BASE_URL=http://localhost:5230
 MEMOS_PAT=<your-personal-access-token>
 ```
 
-The MCP server reads `.env` from the plugin root. Codex can also pass real environment variables; those override `.env` values.
+`MEMOS_PAT` is required in normal mode. Without it, the MCP server fails fast so records are not silently written outside Memos.
 
-`MEMOS_PAT` is required. Without it, the plugin fails fast instead of silently writing local JSON records that will not appear in the Memos web UI.
+Put `.env` in the same folder as `.codex-plugin/plugin.json`.
 
-Do not commit the real token. `.env` is ignored by git.
+The MCP client looks for `.env` in:
 
-## 4. Install Or Load The Plugin In Codex
+1. the current working directory
+2. the plugin root
 
-The plugin root is:
+Process environment variables still override `.env`.
 
-```text
-/path/to/codex-memos-evolve
+## 3. Install Or Refresh The Plugin
+
+For the `sky-tools` marketplace:
+
+```bash
+codex plugin add codex-memos-evolve@sky-tools
 ```
 
-The Codex plugin manifest is:
+For other Codex setups, first add the marketplace that contains this plugin:
 
-```text
-/path/to/codex-memos-evolve/.codex-plugin/plugin.json
+```bash
+codex plugin marketplace add /path/to/marketplace
+codex plugin add codex-memos-evolve@<marketplace-name>
 ```
 
-The manifest points Codex to:
+`codex plugin add` installs from a configured marketplace snapshot. It does not install an arbitrary repository folder directly.
+
+If you only have this cloned repository, create a small local marketplace:
+
+```bash
+mkdir -p /path/to/marketplace/plugins
+ln -s "$PWD" /path/to/marketplace/plugins/codex-memos-evolve
+mkdir -p /path/to/marketplace/.agents/plugins
+```
+
+Create `/path/to/marketplace/.agents/plugins/marketplace.json`:
+
+```json
+{
+  "name": "local-tools",
+  "plugins": [
+    {
+      "name": "codex-memos-evolve",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-memos-evolve"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
+```
+
+Then install it:
+
+```bash
+codex plugin marketplace add /path/to/marketplace
+codex plugin add codex-memos-evolve@local-tools
+```
+
+The manifest is:
+
+```text
+.codex-plugin/plugin.json
+```
+
+It points Codex to:
 
 ```text
 skills/
 .mcp.json
 ```
 
-If your Codex build supports local plugin installation from a folder, install this project folder as the plugin source.
-
-If your Codex setup uses a local marketplace, add this folder as the source for plugin name:
-
-```text
-codex-memos-evolve
-```
-
-The MCP server command declared by the plugin is:
+The MCP command is:
 
 ```json
 {
@@ -90,28 +115,13 @@ The MCP server command declared by the plugin is:
 }
 ```
 
-Codex should run that command from the plugin root.
+Codex should run this command from the plugin root. If relative paths do not resolve, refresh the plugin install so Codex uses the expected root.
 
-## 5. Manual MCP Fallback
+Open a new Codex thread after reinstalling.
 
-If Codex cannot load the plugin UI yet, you can still verify the MCP server directly:
+## 4. Confirm Tools
 
-```bash
-cd /path/to/codex-memos-evolve
-bun run mcp:smoke
-```
-
-For a manual stdio server run:
-
-```bash
-bun start
-```
-
-The process will wait for an MCP client.
-
-## 6. Confirm Tools Are Available
-
-After Codex loads the plugin, the following MCP tools should be available:
+Codex should load these MCP tools:
 
 ```text
 memos_evolve_recall
@@ -121,93 +131,56 @@ memos_evolve_feedback
 memos_evolve_stats
 ```
 
-The included Codex skill is:
+It should also load the skill:
 
 ```text
 memos-evolve
 ```
 
-It tells Codex when to recall memory, record traces, run reflection, record feedback, and inspect stats.
+Look for these in the active MCP tool list for a new Codex thread, or ask Codex to list available MCP tools if your surface supports that.
 
-## 7. Expected Workflow In Codex
-
-Before a reusable task:
-
-```text
-Call memos_evolve_recall with the project name and current task.
-```
-
-After useful work:
-
-```text
-Call memos_evolve_record_trace with grounded observations and corrections.
-```
-
-After repeated related traces:
-
-```text
-Call memos_evolve_reflect with minSupport=2 or higher.
-```
-
-When a memory is wrong or useful:
-
-```text
-Call memos_evolve_feedback with the target and rating.
-```
-
-For inspection:
-
-```text
-Call memos_evolve_stats for the project.
-```
-
-## 8. Check The Memos Page
-
-Open:
-
-```text
-http://localhost:5230
-```
-
-Search:
-
-```text
-#codex-memos-evolve
-```
-
-If no records appear:
-
-- Confirm `MEMOS_PAT` is exported in the environment where Codex starts.
-- Confirm `.env` exists in the plugin root if you are not exporting variables.
-- Confirm `MEMOS_BASE_URL` is `http://localhost:5230`.
-- Confirm the Memos container is running.
-- Run `bun run mcp:smoke` from the plugin root.
-
-## 9. Troubleshooting
-
-Check Memos:
+If your surface does not expose the active tool list, use two checks:
 
 ```bash
-docker ps --filter name=sky-memos
-"$MEMOS_HOME/bin/logs.sh"
+codex mcp list
+bun run mcp:smoke
 ```
 
-Check plugin validation:
+`codex mcp list` confirms Codex knows about enabled MCP servers. `bun run mcp:smoke` confirms this plugin's MCP server starts and lists 5 tools.
 
-```bash
-python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
-```
+## 5. If MCP Startup Is Incomplete
 
-Check MCP smoke:
+Run from the plugin root:
 
 ```bash
 bun run mcp:smoke
 ```
 
-Check explicit local test data only when `MEMOS_EVOLVE_FORCE_LOCAL=1` was intentionally set:
+Then check:
 
-```text
-.data/local-memos.json
+- Memos is running at `MEMOS_BASE_URL`.
+- `.env` is in the same folder as `.codex-plugin/plugin.json`.
+- `MEMOS_PAT` is valid.
+- The plugin was refreshed after edits.
+- The Codex thread was restarted.
+
+| `bun run mcp:smoke` result | Meaning | Next step |
+| --- | --- | --- |
+| Passes and lists 5 tools | The plugin MCP server works locally. | Reinstall or refresh the plugin, then open a new Codex thread. |
+| `MEMOS_PAT is required` | The token is missing from `.env` or the Codex process environment. | Fix `.env` or export `MEMOS_PAT`. |
+| Connection refused | Memos is not reachable. | Start Memos or correct `MEMOS_BASE_URL`. |
+| Codex still shows no tools | Codex is using an old plugin cache or wrong root. | Reinstall the plugin and confirm the installed plugin path. |
+
+To inspect configured marketplaces:
+
+```bash
+codex plugin marketplace list
 ```
 
-If local data exists but Memos has no records, Codex was likely started in explicit local mode.
+To inspect installed plugin cache paths, check the plugin cache under your active `CODEX_HOME`, for example:
+
+```bash
+find "$CODEX_HOME/plugins/cache" -maxdepth 4 -type d -name codex-memos-evolve
+```
+
+If `codex_apps` also fails with `401 token_invalidated`, that is separate from this plugin. Check the Codex login context that starts the app server and sign in again if needed.

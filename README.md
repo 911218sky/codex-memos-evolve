@@ -1,54 +1,42 @@
 # Codex Memos Evolve
 
-Codex Memos Evolve is a local Codex plugin that adds a small Reflect2Evolve-style memory loop to Codex. It records useful task experience, promotes repeated patterns into policies and skills, and stores everything in [usememos/memos](https://github.com/usememos/memos) so the memory remains visible, searchable, and portable.
+Codex Memos Evolve is a local Codex plugin that gives Codex a small long-term memory loop.
 
-This project is designed for local development workflows where Codex should remember project-specific conventions without filling every future prompt with raw history.
+It stores useful task traces in [usememos/memos](https://github.com/usememos/memos), then turns repeated lessons into compact policies and skills that Codex can recall later.
 
-```text
-Codex
-  -> MCP tools
-  -> usememos/memos API
-  -> trace -> policy -> skill -> compact recall
+![Codex Memos Evolve architecture](assets/codex-memos-evolve-architecture.png)
+
+## What It Does
+
+| Step | Result |
+| --- | --- |
+| Recall | Codex asks for relevant memory before reusable work. |
+| Record | Completed work is saved as a short trace in Memos. |
+| Reflect | Repeated traces become policies and skill memos. |
+| Reuse | Future tasks get compact guidance instead of raw history. |
+
+This is a working prototype. It does not implement a full memory operating system and it does not yet have automatic Codex lifecycle hooks.
+
+## Requirements
+
+- Bun 1.3 or newer
+- Codex with plugin and MCP support
+- A running Memos server
+- A Memos personal access token for `MEMOS_PAT`
+
+This repo does not install Memos. Install and start Memos first from the upstream project.
+
+To confirm your Codex CLI supports plugins, run:
+
+```bash
+codex plugin --help
 ```
 
-## Status
-
-This is a working prototype, not a complete clone of MemTensor's MemOS local plugin.
-
-Implemented:
-
-- Codex plugin manifest and MCP server.
-- usememos/memos client with personal access token support.
-- Explicit local JSON mode for offline tests and development.
-- Task trace recording.
-- Repeated-trace reflection into policy and skill memos.
-- Feedback recording and recall-aware feedback scoring.
-- Token-budgeted recall with stale, secret, and low-value memory suppression.
-- Integration with an existing local Memos service.
-- Smoke tests, MCP smoke test, and project scoring script.
-
-Not implemented yet:
-
-- Automatic Codex task-start and task-end lifecycle hooks.
-- Dedicated dashboard beyond the normal Memos web UI.
-- Embedding or LLM-based clustering.
-- Automatic installation of generated skill memos into Codex skill folders.
-- Long-history stress testing against hundreds of traces.
-
-## Why This Exists
-
-Raw conversation history is expensive, noisy, and often too specific. This plugin separates memory into layers:
-
-- **Trace**: grounded record of what happened in a task.
-- **Policy**: repeated lesson promoted from multiple traces.
-- **Skill**: reusable workflow distilled from stable policies.
-- **Feedback**: user or agent judgement about whether a memory is useful, wrong, stale, or too broad.
-
-The recall path favors compact policies and skills over raw traces, so repeated work should become cheaper and more consistent over time.
+If that command is missing, use a Codex build or surface that includes plugin and MCP support.
 
 ## Quick Start
 
-Install dependencies:
+1. Install dependencies:
 
 ```bash
 git clone https://github.com/911218sky/codex-memos-evolve.git
@@ -56,146 +44,130 @@ cd codex-memos-evolve
 bun install
 ```
 
-Start your local Memos service:
-
-```bash
-$MEMOS_HOME/bin/start.sh
-```
-
-If Memos is not installed yet, install it from the upstream repository first:
-
-```text
-https://github.com/usememos/memos
-```
-
-Follow the upstream Memos installation instructions, then make sure the web UI is reachable at `http://localhost:5230` or set `MEMOS_BASE_URL` to your Memos URL.
-
-Open the Memos UI:
-
-```text
-http://localhost:5230
-```
-
-Create the first account, then create a personal access token in the Memos web UI.
-
-Create a local `.env` before starting Codex or the MCP server:
+2. Create `.env`:
 
 ```bash
 cp .env.example .env
 $EDITOR .env
 ```
 
-Set `MEMOS_PAT` in `.env` to the personal access token from the Memos web UI.
+Set:
 
-Run validation:
+```dotenv
+MEMOS_BASE_URL=http://localhost:5230
+MEMOS_PAT=<your-personal-access-token>
+```
+
+3. Validate:
 
 ```bash
 bun run validate
 ```
 
-Install or load the plugin in Codex:
+4. Install or refresh the Codex plugin:
 
 ```bash
-python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
+codex plugin add codex-memos-evolve@sky-tools
 ```
 
-Then follow the Codex-side installation notes in [Codex Installation](docs/codex-install.md).
+This assumes your Codex setup exposes this plugin through the local or personal `sky-tools` marketplace.
 
-Run the MCP server manually:
+For another local marketplace:
 
 ```bash
-bun start
+codex plugin marketplace add /path/to/marketplace
+codex plugin add codex-memos-evolve@<marketplace-name>
 ```
 
-When run directly, the server speaks MCP over stdio and waits for an MCP client.
+`codex plugin add` installs from a configured marketplace snapshot. It does not install an arbitrary repository folder directly.
+
+If you need to make a tiny local marketplace from this clone:
+
+```bash
+mkdir -p /path/to/marketplace/plugins
+ln -s "$PWD" /path/to/marketplace/plugins/codex-memos-evolve
+mkdir -p /path/to/marketplace/.agents/plugins
+```
+
+Create `/path/to/marketplace/.agents/plugins/marketplace.json`:
+
+```json
+{
+  "name": "local-tools",
+  "plugins": [
+    {
+      "name": "codex-memos-evolve",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-memos-evolve"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
+```
+
+Then install it:
+
+```bash
+codex plugin marketplace add /path/to/marketplace
+codex plugin add codex-memos-evolve@local-tools
+```
+
+Start a new Codex thread after reinstalling so MCP tools and skills reload.
 
 ## MCP Tools
 
-| Tool | Purpose |
+| Tool | Use |
 | --- | --- |
-| `memos_evolve_recall` | Return compact, token-aware guidance for the current task. |
-| `memos_evolve_record_trace` | Store a grounded task trace for later reflection. |
-| `memos_evolve_reflect` | Promote repeated traces into policy and skill memos. |
-| `memos_evolve_feedback` | Record feedback about a memory, policy, or skill. |
-| `memos_evolve_stats` | Summarize counts and rough token compression estimates. |
+| `memos_evolve_recall` | Get compact memory for the current task. |
+| `memos_evolve_record_trace` | Save a grounded task trace. |
+| `memos_evolve_reflect` | Promote repeated traces into policies and skills. |
+| `memos_evolve_feedback` | Mark memory as useful, wrong, stale, or noisy. |
+| `memos_evolve_stats` | Show counts and rough token savings. |
 
-## Memos Integration
+You normally do not call these directly. The `memos-evolve` skill tells Codex when to use them.
 
-Runtime storage uses a Memos server configured with:
+## Common Checks
 
-```dotenv
-MEMOS_BASE_URL=http://localhost:5230
-MEMOS_PAT=...
-```
-
-The plugin reads these values from the plugin root `.env` file, or from environment variables passed by the process that starts Codex. Environment variables override `.env` values.
-
-`MEMOS_PAT` is required by default. If it is missing, the MCP server fails fast instead of silently writing somewhere else.
-
-For explicit local tests or development only, set:
+If Codex says MCP startup is incomplete:
 
 ```bash
-MEMOS_EVOLVE_FORCE_LOCAL=1
+bun run mcp:smoke
 ```
 
-That mode writes local development storage at:
+Then check:
 
-```text
-.data/local-memos.json
+- Memos is reachable at `MEMOS_BASE_URL`.
+- `.env` is in the same folder as `.codex-plugin/plugin.json`.
+- `MEMOS_PAT` is set and valid.
+- The plugin was reinstalled after source or manifest changes.
+- A new Codex thread was opened after reinstalling.
+
+| `bun run mcp:smoke` result | Next step |
+| --- | --- |
+| Passes and lists 5 tools | Reinstall or refresh the plugin, then open a new Codex thread. |
+| `MEMOS_PAT is required` | Fix `.env` or export `MEMOS_PAT` in the process that starts Codex. |
+| Connection refused | Start Memos or fix `MEMOS_BASE_URL`. |
+| Tools still absent in Codex | Reinstall the plugin and confirm Codex is using the expected plugin root. |
+
+The MCP client now looks for `.env` in the current working directory and in the plugin root, so it is less sensitive to where Codex starts the server.
+
+## Local Test Mode
+
+Normal mode requires `MEMOS_PAT`. Missing tokens fail fast.
+
+For tests only:
+
+```bash
+MEMOS_EVOLVE_FORCE_LOCAL=1 bun run validate
 ```
 
-Local mode is useful for tests, but it is not a replacement for the Memos UI.
-
-## Memory Tags
-
-Every stored record includes:
-
-- `#codex-memos-evolve`
-- `#project/<project-name>`
-- one type tag such as `#type/trace`, `#type/policy`, `#type/skill`, or `#type/feedback`
-
-Reflection can add:
-
-- `#support/<n>`
-- `#version/<n>`
-- `#skill/<slug>`
-- `#status/active`
-
-Useful Memos searches:
-
-```text
-#codex-memos-evolve
-#project/<project-name>
-#type/trace
-#type/policy
-#type/skill
-#status/active
-```
-
-## Visible UI
-
-The current UI is the standard Memos web app. Because all memory is stored as tagged Markdown memos, the Memos page acts as the first memory viewer.
-
-This means you can inspect, search, edit, and delete memory from:
-
-```text
-http://localhost:5230
-```
-
-A dedicated dashboard can be added later on top of the same tags and API.
-
-## Repository Layout
-
-```text
-.codex-plugin/plugin.json   Codex plugin manifest
-.mcp.json                   MCP server configuration
-src/mcp-server.ts          MCP tool definitions
-src/evolver.ts             Recall, reflection, feedback, and stats logic
-src/memos-client.ts        Memos API client and explicit local test mode
-skills/memos-evolve/        Codex workflow instructions
-docs/                       Installation, architecture, review, and scoring notes
-tests/                      Local smoke and MCP smoke tests
-```
+Local mode writes to `.data/local-memos.json`. Those records do not appear in the Memos web UI.
 
 ## Documentation
 
@@ -205,28 +177,23 @@ tests/                      Local smoke and MCP smoke tests
 - [Evaluation Rubric](docs/evaluation-rubric.md)
 - [Subagent Review](docs/subagent-review.md)
 
-## Verification
+## Repository Layout
 
-```bash
-bun run validate
+```text
+.codex-plugin/plugin.json   Codex plugin manifest
+.mcp.json                   MCP server configuration
+assets/                     Markdown images
+docs/                       Install, architecture, and review notes
+skills/memos-evolve/        Codex workflow instructions
+src/mcp-server.ts           MCP tool definitions
+src/evolver.ts              Recall, reflection, feedback, and stats
+src/memos-client.ts         Memos API client and local test mode
+tests/                      Local smoke and MCP smoke tests
 ```
 
-This runs:
+## Security
 
-- local memory smoke test
-- MCP smoke test
-- project scoring script
-
-Codex plugin manifest validation:
-
-```bash
-python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
-```
-
-## Security Notes
-
-- Do not commit `MEMOS_PAT`.
-- Do not commit `.env`; use `.env.example` for safe placeholders.
+- Do not commit `.env`.
+- Do not print or commit `MEMOS_PAT`.
 - Do not store bearer tokens, cookies, API keys, or private credentials in memos.
-- The plugin rejects obvious secret-looking trace and feedback content before storage.
 - Explicit user instructions always outrank recalled memory.
