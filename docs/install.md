@@ -102,7 +102,7 @@ For the MCP path only:
 bun run mcp:smoke
 ```
 
-If Codex reports MCP startup incomplete, continue with [Codex Installation](codex-install.md#5-if-mcp-startup-is-incomplete).
+If Codex reports MCP startup incomplete, continue with [Codex Installation](codex-install.md#6-if-mcp-startup-is-incomplete).
 
 For a raw stdio server:
 

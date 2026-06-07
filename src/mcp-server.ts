@@ -15,10 +15,10 @@ const server = new McpServer({
 
 server.tool(
   "memos_evolve_recall",
-  "Return compact, token-aware Memos guidance for the current Codex task.",
+  "Call at the start of non-trivial Codex work to recall compact, token-aware Memos guidance for the current task. Use before code edits, debugging, docs, reviews, plugin/MCP work, subagent coordination, and repeated workflows unless the task is clearly trivial.",
   {
-    task: z.string().describe("Current task or user request."),
-    project: z.string().default("default").describe("Project or repository name."),
+    task: z.string().describe("Current user request plus the immediate work you are about to do."),
+    project: z.string().default("default").describe("Project or repository name, for example codex-memos-evolve."),
     maxTokens: z.number().int().min(200).max(4000).default(1400).describe("Approximate token budget for recall output.")
   },
   async (input) => jsonResult(await engine.recall(input))

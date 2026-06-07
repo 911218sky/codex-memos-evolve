@@ -1,6 +1,6 @@
 {
   "name": "codex-memos-evolve",
-  "version": "0.1.0+codex.20260606171928",
+  "version": "0.1.0+codex.20260607080115",
   "description": "Reflect2Evolve-style Codex memory plugin backed by usememos/memos.",
   "author": {
     "name": "911218sky"
@@ -18,7 +18,11 @@
       "Skill crystallization",
       "Token-aware recall"
     ],
-    "defaultPrompt": "Use Memos Evolve to recall relevant memory before work and record durable lessons after work."
+    "defaultPrompt": [
+      "Before non-trivial Codex work, call memos_evolve_recall for relevant memory.",
+      "After reusable work, call memos_evolve_record_trace with durable lessons.",
+      "Use memos_evolve_stats to verify the memory plugin is connected."
+    ]
   },
   "mcpServers": "./.mcp.json"
 }

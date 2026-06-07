@@ -119,7 +119,11 @@ Codex should run this command from the plugin root. If relative paths do not res
 
 Open a new Codex thread after reinstalling.
 
-## 4. Confirm Tools
+## 4. Encourage Proactive Recall
+
+Plugin skills, default prompts, and this repo's `AGENTS.md` ask Codex to call `memos_evolve_recall` before non-trivial work. For stronger behavior in other repositories, copy the snippet from [Proactive Use](proactive-use.md) into that workspace's `AGENTS.md` or another instruction file inherited by the agents you spawn.
+
+## 5. Confirm Tools
 
 Codex should load these MCP tools:
 
@@ -148,7 +152,7 @@ bun run mcp:smoke
 
 `codex mcp list` confirms Codex knows about enabled MCP servers. `bun run mcp:smoke` confirms this plugin's MCP server starts and lists 5 tools.
 
-## 5. If MCP Startup Is Incomplete
+## 6. If MCP Startup Is Incomplete
 
 Run from the plugin root:
 

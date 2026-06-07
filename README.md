@@ -17,6 +17,8 @@ It stores useful task traces in [usememos/memos](https://github.com/usememos/mem
 
 This is a working prototype. It does not implement a full memory operating system and it does not yet have automatic Codex lifecycle hooks.
 
+The plugin now makes proactive recall the default instructed behavior for non-trivial work, and this repo includes an `AGENTS.md` instruction file with the same rule. Codex runtime still decides whether a tool is exposed and selected in each session. For stronger project-level behavior in other repos, copy the snippet in [Proactive Use](docs/proactive-use.md) to that workspace's `AGENTS.md`.
+
 ## Requirements
 
 - Bun 1.3 or newer
@@ -173,6 +175,7 @@ Local mode writes to `.data/local-memos.json`. Those records do not appear in th
 
 - [Installation](docs/install.md)
 - [Codex Installation](docs/codex-install.md)
+- [Proactive Use](docs/proactive-use.md)
 - [Architecture](docs/architecture.md)
 - [Evaluation Rubric](docs/evaluation-rubric.md)
 - [Subagent Review](docs/subagent-review.md)
@@ -182,6 +185,7 @@ Local mode writes to `.data/local-memos.json`. Those records do not appear in th
 ```text
 .codex-plugin/plugin.json   Codex plugin manifest
 .mcp.json                   MCP server configuration
+AGENTS.md                   Repository instruction for proactive memory use
 assets/                     Markdown images
 docs/                       Install, architecture, and review notes
 skills/memos-evolve/        Codex workflow instructions

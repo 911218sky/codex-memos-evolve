@@ -1,6 +1,6 @@
 ---
 name: memos-evolve
-description: Use when a Codex task may benefit from long-term Memos memory, repeated-work learning, or compact recall.
+description: Proactively use the codex-memos-evolve MCP memory tools for non-trivial Codex work, repeated workflows, project conventions, MCP/plugin questions, memory recall, reflection, or durable lessons.
 ---
 
 # Memos Evolve Workflow
@@ -11,18 +11,28 @@ Use the `codex-memos-evolve` MCP tools as a small memory loop:
 recall -> work -> record trace -> reflect -> reuse
 ```
 
+## Default Behavior
+
+For any non-trivial Codex task, start with `memos_evolve_recall` when the tool is available.
+
+This includes code changes, code review, debugging, documentation work, plugin work, MCP work, subagent coordination, project setup, repeated workflows, or anything where prior project memory could affect the answer.
+
+Skip recall only when the task is clearly trivial, such as a simple greeting, a one-command lookup, or a request where memory cannot change the result.
+
+If `memos_evolve_recall` is unavailable, continue normally and mention the missing tool only when it matters to the task.
+
 ## Use This Skill When
 
 - The user asks Codex to remember, learn, improve, or preserve a workflow.
-- The task involves project conventions, setup steps, recurring failures, or repeated corrections.
-- The task mentions Memos, memory, recall, reflection, feedback, MCP tools, or this plugin.
+- The task involves code edits, code review, documentation edits, project conventions, setup steps, recurring failures, or repeated corrections.
+- The task mentions Memos, memory, recall, reflection, feedback, MCP tools, plugins, subagents, or this plugin.
 - Prior compact memory could change the answer or save context.
 
 Skip it for trivial one-off questions, quick command lookups, and tasks where memory cannot affect the work.
 
 ## Before Work
 
-Call:
+At the beginning of applicable work, call:
 
 ```text
 memos_evolve_recall
@@ -30,11 +40,13 @@ memos_evolve_recall
 
 Use:
 
-- `project`: repository or product name
-- `task`: current user request
+- `project`: repository or product name, such as `codex-memos-evolve`
+- `task`: current user request and the immediate work you are about to do
 - `maxTokens`: usually `800` to `1400`
 
 Apply recalled memory only when it directly matches the task. User instructions and system rules always outrank memory.
+
+When delegating to subagents, include a short instruction in the delegated prompt: "If the `memos_evolve_recall` tool is available, call it before non-trivial work and report whether it was used." This makes the expected memory behavior observable.
 
 ## After Useful Work
 
@@ -120,4 +132,4 @@ MEMOS_EVOLVE_FORCE_LOCAL=1 bun run validate
 
 Normal storage requires `MEMOS_PAT`. Local mode writes JSON records only; it does not update the Memos web UI.
 
-If the MCP tools are missing in Codex, follow `docs/codex-install.md#5-if-mcp-startup-is-incomplete`.
+If the MCP tools are missing in Codex, follow `docs/codex-install.md#6-if-mcp-startup-is-incomplete`.
