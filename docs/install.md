@@ -11,6 +11,8 @@ You need:
 - A running Memos server
 - A Memos personal access token
 
+Bun is used for local development and validation scripts. The installed Codex MCP server runs with Node from `.mcp.json`.
+
 Check Bun:
 
 ```bash
@@ -107,10 +109,10 @@ If Codex reports MCP startup incomplete, continue with [Codex Installation](code
 For a raw stdio server:
 
 ```bash
-bun start
+node --no-warnings --experimental-strip-types ./src/mcp-server.ts
 ```
 
-`bun start` waits for an MCP client, so no prompt is expected.
+The raw stdio server waits for an MCP client, so no prompt is expected.
 
 ## 7. View Records
 

@@ -73,6 +73,7 @@ codex plugin add codex-memos-evolve@sky-tools
 ```
 
 This assumes your Codex setup exposes this plugin through the local or personal `sky-tools` marketplace.
+The installed Codex MCP server runs with Node from `.mcp.json`; Bun is used for local development and validation scripts.
 
 For another local marketplace:
 

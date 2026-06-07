@@ -11,6 +11,8 @@ bun install
 bun run validate
 ```
 
+Bun is only used for local validation here. The installed Codex MCP server runs with Node from `.mcp.json`.
+
 Validate the manifest:
 
 ```bash
@@ -110,8 +112,8 @@ The MCP command is:
 
 ```json
 {
-  "command": "bun",
-  "args": ["./src/mcp-server.ts"]
+  "command": "node",
+  "args": ["--no-warnings", "--experimental-strip-types", "./src/mcp-server.ts"]
 }
 ```
 
@@ -150,7 +152,7 @@ codex mcp list
 bun run mcp:smoke
 ```
 
-`codex mcp list` confirms Codex knows about enabled MCP servers. `bun run mcp:smoke` confirms this plugin's MCP server starts and lists 5 tools.
+`codex mcp list` confirms Codex knows about enabled MCP servers. `bun run mcp:smoke` is a local validation script that starts the same Node MCP entrypoint and confirms it lists 5 tools.
 
 ## 6. If MCP Startup Is Incomplete
 
