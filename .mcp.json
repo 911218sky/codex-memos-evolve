@@ -1,8 +1,11 @@
 {
   "mcpServers": {
     "codex-memos-evolve": {
-      "command": "bun",
+      "cwd": ".",
+      "command": "node",
       "args": [
+        "--no-warnings",
+        "--experimental-strip-types",
         "./src/mcp-server.ts"
       ],
       "env": {

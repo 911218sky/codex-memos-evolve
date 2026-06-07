@@ -1,6 +1,6 @@
 {
   "name": "codex-memos-evolve",
-  "version": "0.1.0+codex.20260607080115",
+  "version": "0.1.0+codex.20260607114225",
   "description": "Reflect2Evolve-style Codex memory plugin backed by usememos/memos.",
   "author": {
     "name": "911218sky"

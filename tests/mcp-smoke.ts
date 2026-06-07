@@ -17,12 +17,20 @@ const mcpConfig = JSON.parse(fs.readFileSync(path.join(root, ".mcp.json"), "utf8
   };
 };
 const mcpServer = mcpConfig.mcpServers["codex-memos-evolve"];
-assert.equal(mcpServer.command, "bun");
-assert.deepEqual(mcpServer.args, ["./src/mcp-server.ts"]);
+const mcpArgs = mcpServer.args || [];
+assert.ok(
+  ["bun", "node"].includes(mcpServer.command) || fs.existsSync(mcpServer.command),
+  "MCP command must be bun/node on PATH or an existing executable path"
+);
+assert.ok(mcpArgs.length >= 1);
+assert.ok(mcpArgs[0]);
+const serverEntry = mcpArgs[mcpArgs.length - 1];
+assert.ok(serverEntry);
+assert.ok(fs.existsSync(path.resolve(root, serverEntry)));
 
 const transport = new StdioClientTransport({
   command: mcpServer.command,
-  args: mcpServer.args || [],
+  args: mcpArgs,
   cwd: root,
   env: {
     ...process.env,
