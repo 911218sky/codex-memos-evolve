@@ -50,9 +50,14 @@ function firstText(result: unknown): string {
 
 const tools = await client.listTools();
 const names = tools.tools.map((tool) => tool.name);
-assert.ok(names.includes("memos_evolve_recall"));
-assert.ok(names.includes("memos_evolve_record_trace"));
-assert.ok(names.includes("memos_evolve_reflect"));
+assert.deepEqual(names.sort(), [
+  "memos_evolve_feedback",
+  "memos_evolve_maintain",
+  "memos_evolve_recall",
+  "memos_evolve_record_trace",
+  "memos_evolve_reflect",
+  "memos_evolve_stats"
+]);
 
 await client.callTool({
   name: "memos_evolve_record_trace",
@@ -88,6 +93,15 @@ const trivial = await client.callTool({
   }
 });
 assert.match(firstText(trivial), /trivial-task-gate/);
+
+const maintenance = await client.callTool({
+  name: "memos_evolve_maintain",
+  arguments: {
+    project: "mcp-smoke",
+    apply: false
+  }
+});
+assert.match(firstText(maintenance), /Dry run only/);
 
 await client.close();
 

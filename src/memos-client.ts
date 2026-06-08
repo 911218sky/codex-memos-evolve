@@ -119,6 +119,24 @@ export class MemosClient {
     return this.searchMemos("#codex-memos-evolve", pageSize);
   }
 
+  async updateMemo(memo: MemoRecord, content: string): Promise<MemoRecord> {
+    if (this.mode === "local-json") return this.#updateLocal(memo, content);
+    const name = memo.name || (memo.id ? `memos/${memo.id}` : "");
+    if (!name) throw new Error("Cannot update memo without a name or id.");
+    const url = new URL(`${this.baseUrl}/api/v1/${name}`);
+    url.searchParams.set("updateMask", "content");
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: this.#headers(),
+      body: JSON.stringify({ content })
+    });
+    if (!res.ok) {
+      const message = await res.text();
+      throw new Error(`Memos update failed ${res.status}: ${message}`);
+    }
+    return res.json() as Promise<MemoRecord>;
+  }
+
   #headers(hasBody = true): Record<string, string> {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.token}`
@@ -152,6 +170,22 @@ export class MemosClient {
     items.unshift(memo);
     this.#writeLocal(items);
     return memo;
+  }
+
+  #updateLocal(memo: MemoRecord, content: string): MemoRecord {
+    const id = memoIdFromName(memo.name) || String(memo.id || "");
+    if (!id) throw new Error("Cannot update local memo without a name or id.");
+    const items = this.#readLocal();
+    const index = items.findIndex((item) => memoIdFromName(item.name) === id || String(item.id || "") === id);
+    if (index < 0) throw new Error(`Cannot update missing local memo ${id}.`);
+    const updated = {
+      ...items[index],
+      content,
+      updateTime: nowIso()
+    };
+    items[index] = updated;
+    this.#writeLocal(items);
+    return { ...updated, id };
   }
 
   #searchLocal(query: string, pageSize: number): MemoRecord[] {

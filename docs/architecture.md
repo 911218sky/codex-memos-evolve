@@ -8,7 +8,7 @@ Codex Memos Evolve has three moving parts:
 
 ![Codex Memos Evolve architecture](../assets/codex-memos-evolve-architecture.png)
 
-In the diagram, external MCP tools such as filesystem, search, or git are examples of the wider Codex tool environment. This plugin provides the five memory tools listed in the README.
+In the diagram, external MCP tools such as filesystem, search, or git are examples of the wider Codex tool environment. This plugin provides the six memory tools listed in the README.
 
 ## Flow
 
@@ -18,6 +18,7 @@ Codex task
   -> do the work
   -> record a trace
   -> reflect repeated traces
+  -> maintain short-lived and low-value traces
   -> reuse policies and skills later
 ```
 
@@ -25,8 +26,8 @@ Codex task
 
 | Component | Role |
 | --- | --- |
-| `src/mcp-server.ts` | Defines the five MCP tools and validates inputs. |
-| `src/evolver.ts` | Handles recall, trace recording, reflection, feedback, and stats. |
+| `src/mcp-server.ts` | Defines the six MCP tools and validates inputs. |
+| `src/evolver.ts` | Handles recall, trace recording, reflection, feedback, stats, and maintenance. |
 | `src/memos-client.ts` | Connects to Memos or explicit local JSON test storage. |
 | `skills/memos-evolve/SKILL.md` | Tells Codex when to use the memory loop. |
 | Memos | Stores tagged Markdown records and provides the visible UI. |
@@ -39,6 +40,7 @@ Codex task
 | Policy | A lesson repeated across traces. | Turns repeated corrections into rules. |
 | Skill | A reusable workflow distilled from policies. | Gives Codex compact guidance. |
 | Feedback | A rating or correction about memory quality. | Suppresses stale, wrong, broad, or noisy memory. |
+| Maintenance | A summary of cleanup and promotion work. | Keeps recall small and makes memory hygiene auditable. |
 
 Recall prefers skills and policies over raw traces because they are shorter and easier to act on.
 
@@ -81,6 +83,17 @@ Active promoted records may also include:
 #version/<n>
 #skill/<slug>
 ```
+
+Short-lived traces may also include:
+
+```text
+#memory/short
+#ttl/<days>
+#expires/<yyyy-mm-dd>
+#status/expired
+```
+
+`memos_evolve_maintain` can run as a dry run or an apply step. Dry runs only report candidates. Apply mode marks expired or old low-value traces with `#status/expired`, runs reflection, and writes a `#type/maintenance` summary. Recall excludes expired records.
 
 ## Safety
 

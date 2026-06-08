@@ -13,6 +13,7 @@ It stores useful task traces in [usememos/memos](https://github.com/usememos/mem
 | Recall | Codex asks for relevant memory before reusable work. |
 | Record | Completed work is saved as a short trace in Memos. |
 | Reflect | Repeated traces become policies and skill memos. |
+| Maintain | Short-lived or low-value traces are expired and summarized. |
 | Reuse | Future tasks get compact guidance instead of raw history. |
 
 This is a working prototype. It does not implement a full memory operating system and it does not yet have automatic Codex lifecycle hooks.
@@ -132,6 +133,7 @@ Start a new Codex thread after reinstalling so MCP tools and skills reload.
 | `memos_evolve_reflect` | Promote repeated traces into policies and skills. |
 | `memos_evolve_feedback` | Mark memory as useful, wrong, stale, or noisy. |
 | `memos_evolve_stats` | Show counts and rough token savings. |
+| `memos_evolve_maintain` | Preview or apply cleanup for short-lived, expired, or low-value traces. |
 
 You normally do not call these directly. The `memos-evolve` skill tells Codex when to use them.
 
@@ -153,7 +155,7 @@ Then check:
 
 | `bun run mcp:smoke` result | Next step |
 | --- | --- |
-| Passes and lists 5 tools | Reinstall or refresh the plugin, then open a new Codex thread. |
+| Passes and lists 6 tools | Reinstall or refresh the plugin, then open a new Codex thread. |
 | `MEMOS_PAT is required` | Fix `.env` or export `MEMOS_PAT` in the process that starts Codex. |
 | Connection refused | Start Memos or fix `MEMOS_BASE_URL`. |
 | Tools still absent in Codex | Reinstall the plugin and confirm Codex is using the expected plugin root. |
@@ -172,11 +174,25 @@ MEMOS_EVOLVE_FORCE_LOCAL=1 bun run validate
 
 Local mode writes to `.data/local-memos.json`. Those records do not appear in the Memos web UI.
 
+## Short Memory And Maintenance
+
+`memos_evolve_record_trace` accepts `memory: "long"` for durable lessons, `memory: "short"` for temporary task state, and `ttlDays` for records that should expire after a small number of days.
+
+Run maintenance manually or from a scheduler:
+
+```text
+memos_evolve_maintain({ project: "my-project", apply: false })
+memos_evolve_maintain({ project: "my-project", apply: true })
+```
+
+Dry runs report candidates without changing Memos. Applying maintenance marks expired candidates with `#status/expired`, runs reflection, writes a maintenance summary memo, and reports estimated tokens saved. Recall excludes expired records.
+
 ## Documentation
 
 - [Installation](docs/install.md)
 - [Codex Installation](docs/codex-install.md)
 - [Proactive Use](docs/proactive-use.md)
+- [Memory Maintenance](docs/maintenance.md)
 - [Architecture](docs/architecture.md)
 - [Evaluation Rubric](docs/evaluation-rubric.md)
 - [Subagent Review](docs/subagent-review.md)
@@ -191,7 +207,7 @@ assets/                     Markdown images
 docs/                       Install, architecture, and review notes
 skills/memos-evolve/        Codex workflow instructions
 src/mcp-server.ts           MCP tool definitions
-src/evolver.ts              Recall, reflection, feedback, and stats
+src/evolver.ts              Recall, reflection, feedback, stats, and maintenance
 src/memos-client.ts         Memos API client and local test mode
 tests/                      Local smoke and MCP smoke tests
 ```

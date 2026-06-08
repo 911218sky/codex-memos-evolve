@@ -1,9 +1,10 @@
 import { DEFAULT_MAX_RECALL_TOKENS, DEFAULT_PROJECT, STATUS_TAGS, TYPE_TAGS } from "./constants.ts";
-import { feedbackMemo, policyMemo, projectTag, skillMemo, skillTag, slug, traceMemo } from "./format.ts";
+import { feedbackMemo, maintenanceMemo, policyMemo, projectTag, skillMemo, skillTag, slug, traceMemo } from "./format.ts";
 import { MemosClient } from "./memos-client.ts";
 import { compactLines, estimateTokens, truncateByTokens } from "./token.ts";
 import type {
   FeedbackInput,
+  MaintainInput,
   MemoRecord,
   MemoryCounts,
   PromotionResult,
@@ -22,7 +23,7 @@ function has(content: string, tag: string): boolean {
 }
 
 function isActive(content: string): boolean {
-  return content.includes(STATUS_TAGS.active) && !content.includes(STATUS_TAGS.superseded);
+  return content.includes(STATUS_TAGS.active) && !content.includes(STATUS_TAGS.superseded) && !content.includes(STATUS_TAGS.expired);
 }
 
 function looksSecret(content = ""): boolean {
@@ -55,6 +56,34 @@ function extractRating(content: string): number {
 
 function extractTarget(content: string): string {
   return content.match(/#target\/([a-z0-9\u3400-\u9fff-]+)/)?.[1] || "";
+}
+
+function extractDateTag(content: string, tag: "date" | "expires"): string {
+  return content.match(new RegExp(`#${tag}/(\\d{4}-\\d{2}-\\d{2})`))?.[1] || "";
+}
+
+function extractValue(content: string): number {
+  const value = extractSection(content, "Value").match(/-?\d+(?:\.\d+)?/)?.[0];
+  return value ? Number(value) : 0;
+}
+
+function daysSince(date: string, now = new Date()): number {
+  if (!date) return 0;
+  const time = Date.parse(`${date}T00:00:00.000Z`);
+  if (!Number.isFinite(time)) return 0;
+  return Math.floor((now.getTime() - time) / 86_400_000);
+}
+
+function isExpired(content: string, now = new Date()): boolean {
+  if (content.includes(STATUS_TAGS.expired)) return true;
+  const expires = extractDateTag(content, "expires");
+  return Boolean(expires && Date.parse(`${expires}T23:59:59.999Z`) < now.getTime());
+}
+
+function markExpired(content: string): string {
+  if (content.includes(STATUS_TAGS.expired)) return content;
+  if (content.includes(STATUS_TAGS.active)) return content.replace(STATUS_TAGS.active, STATUS_TAGS.expired);
+  return `${content.trim()}\n\n${STATUS_TAGS.expired}\n`;
 }
 
 function shouldSkipRecall(task: string): boolean {
@@ -125,7 +154,7 @@ export class EvolveEngine {
     const merged = dedupe([...taskMemos, ...pluginMemos]);
     const activeProject = merged.filter((memo) => {
       const content = contentOf(memo);
-      return content.includes(projectTag(project)) && isActive(content) && !looksSecret(content);
+      return content.includes(projectTag(project)) && isActive(content) && !isExpired(content) && !looksSecret(content);
     });
     const feedbacks = activeProject.filter((memo) => has(contentOf(memo), TYPE_TAGS.feedback));
     const feedbackScore = feedbackIndex(feedbacks);
@@ -178,7 +207,7 @@ export class EvolveEngine {
     const projectMemos = memos.filter((memo) => contentOf(memo).includes(projectTag(project)));
     const traces = projectMemos.filter((memo) => {
       const content = contentOf(memo);
-      return has(content, TYPE_TAGS.trace) && isActive(content) && !looksSecret(content);
+      return has(content, TYPE_TAGS.trace) && isActive(content) && !isExpired(content) && !looksSecret(content);
     });
     const existingSkills = projectMemos.filter((memo) => has(contentOf(memo), TYPE_TAGS.skill));
     const byTopic = new Map<string, MemoRecord[]>();
@@ -244,7 +273,7 @@ export class EvolveEngine {
   async stats({ project = DEFAULT_PROJECT }: StatsInput = {}) {
     const memos = await this.client.listPluginMemos(500);
     const projectMemos = memos.filter((memo) => contentOf(memo).includes(projectTag(project)));
-    const counts: MemoryCounts = { trace: 0, policy: 0, skill: 0, feedback: 0, environment: 0 };
+    const counts: MemoryCounts = { trace: 0, policy: 0, skill: 0, feedback: 0, environment: 0, maintenance: 0, expired: 0, short: 0 };
     for (const memo of projectMemos) {
       const content = contentOf(memo);
       if (has(content, TYPE_TAGS.trace)) counts.trace += 1;
@@ -252,9 +281,14 @@ export class EvolveEngine {
       if (has(content, TYPE_TAGS.skill)) counts.skill += 1;
       if (has(content, TYPE_TAGS.feedback)) counts.feedback += 1;
       if (has(content, TYPE_TAGS.environment)) counts.environment += 1;
+      if (has(content, TYPE_TAGS.maintenance)) counts.maintenance += 1;
+      if (isExpired(content)) counts.expired += 1;
+      if (has(content, "#memory/short")) counts.short += 1;
     }
+    const activeProjectMemos = projectMemos.filter((memo) => isActive(contentOf(memo)) && !isExpired(contentOf(memo)) && !looksSecret(contentOf(memo)));
     const allTokens = estimateTokens(projectMemos.map(contentOf).join("\n\n"));
-    const skillPolicyTokens = estimateTokens(projectMemos
+    const activeTokens = estimateTokens(activeProjectMemos.map(contentOf).join("\n\n"));
+    const skillPolicyTokens = estimateTokens(activeProjectMemos
       .filter((memo) => has(contentOf(memo), TYPE_TAGS.skill) || has(contentOf(memo), TYPE_TAGS.policy))
       .map(contentOf)
       .join("\n\n"));
@@ -263,10 +297,124 @@ export class EvolveEngine {
       project,
       counts,
       all_tokens_estimate: allTokens,
+      active_tokens_estimate: activeTokens,
       skill_policy_tokens_estimate: skillPolicyTokens,
-      compression_ratio_estimate: allTokens ? Number((skillPolicyTokens / allTokens).toFixed(3)) : 0
+      compression_ratio_estimate: activeTokens ? Number((skillPolicyTokens / activeTokens).toFixed(3)) : 0,
+      inactive_tokens_estimate: Math.max(0, allTokens - activeTokens)
     };
   }
+
+  async maintain({
+    project = DEFAULT_PROJECT,
+    apply = false,
+    maxTraceAgeDays = 30,
+    minTraceValue = -3,
+    shortMemoryTtlDays = 1,
+    minSupport = 2
+  }: MaintainInput = {}) {
+    const memos = await this.client.listPluginMemos(500);
+    const projectMemos = memos.filter((memo) => contentOf(memo).includes(projectTag(project)));
+    const traces = projectMemos.filter((memo) => has(contentOf(memo), TYPE_TAGS.trace) && !looksSecret(contentOf(memo)));
+    const activeBefore = projectMemos.filter((memo) => {
+      const content = contentOf(memo);
+      return isActive(content) && !isExpired(content) && !looksSecret(content);
+    });
+    const expired = traces.filter((memo) => {
+      const content = contentOf(memo);
+      if (!isActive(content)) return false;
+      if (isExpired(content)) return true;
+      if (has(content, "#memory/short")) {
+        if (extractDateTag(content, "expires")) return false;
+        return daysSince(extractDateTag(content, "date")) >= shortMemoryTtlDays;
+      }
+      return false;
+    });
+    const lowValue = traces.filter((memo) => {
+      const content = contentOf(memo);
+      if (!isActive(content) || isExpired(content)) return false;
+      return daysSince(extractDateTag(content, "date")) >= maxTraceAgeDays && extractValue(content) <= minTraceValue;
+    });
+    const toExpire = dedupe([...expired, ...lowValue]);
+    const activeTokensBefore = estimateTokens(activeBefore.map(contentOf).join("\n\n"));
+    const expiringTokens = estimateTokens(toExpire.map(contentOf).join("\n\n"));
+    let markedExpired = 0;
+
+    if (apply) {
+      for (const memo of toExpire) {
+        await this.client.updateMemo(memo, markExpired(contentOf(memo)));
+        markedExpired += 1;
+      }
+    }
+
+    const promotionCandidates = promotionTopics(traces
+      .filter((memo) => {
+        const content = contentOf(memo);
+        return isActive(content) && !isExpired(content) && !toExpire.some((expiredMemo) => sameMemo(expiredMemo, memo));
+      }), minSupport);
+    const reflection = apply ? await this.reflect({ project, minSupport }) : { promoted: [] as PromotionResult[] };
+    const activeAfter = apply
+      ? (await this.client.listPluginMemos(500))
+        .filter((memo) => contentOf(memo).includes(projectTag(project)))
+        .filter((memo) => {
+          const content = contentOf(memo);
+          return isActive(content) && !isExpired(content) && !looksSecret(content);
+        })
+      : activeBefore.filter((memo) => !toExpire.some((expiredMemo) => sameMemo(expiredMemo, memo)));
+    const activeTokensAfter = estimateTokens(activeAfter.map(contentOf).join("\n\n"));
+    const estimatedTokensSaved = apply ? Math.max(0, activeTokensBefore - activeTokensAfter) : undefined;
+    const maintenance = apply
+      ? await this.client.createMemo(maintenanceMemo({
+        project,
+        expired: expired.length,
+        lowValue: lowValue.length,
+        promoted: reflection.promoted.length,
+        expiringTokens,
+        netTokensSaved: estimatedTokensSaved || 0,
+        applied: apply
+      }))
+      : undefined;
+
+    return {
+      mode: this.client.mode,
+      project,
+      applied: apply,
+      candidates: {
+        expired: expired.length,
+        low_value: lowValue.length,
+        total_to_expire: toExpire.length
+      },
+      marked_expired: markedExpired,
+      promotion_candidates: promotionCandidates,
+      promoted: reflection.promoted,
+      maintenance_memo: maintenance ? maintenance.name || maintenance.id : undefined,
+      expiring_tokens_estimate: expiringTokens,
+      active_tokens_before_estimate: activeTokensBefore,
+      active_tokens_after_estimate: activeTokensAfter,
+      estimated_tokens_saved: estimatedTokensSaved,
+      note: apply
+        ? "Expired candidates were marked #status/expired and excluded from future recall."
+        : "Dry run only. Pass apply: true to mark candidates #status/expired and compute net active-token savings after reflection."
+    };
+  }
+}
+
+function promotionTopics(traces: MemoRecord[], minSupport: number): Array<{ topic: string; support: number }> {
+  const byTopic = new Map<string, number>();
+  for (const trace of traces) {
+    for (const topic of topicCandidates(contentOf(trace)).slice(0, 2)) {
+      byTopic.set(topic, (byTopic.get(topic) || 0) + 1);
+    }
+  }
+  return [...byTopic.entries()]
+    .filter(([, support]) => support >= minSupport)
+    .map(([topic, support]) => ({ topic: slug(topic), support }))
+    .sort((a, b) => b.support - a.support || a.topic.localeCompare(b.topic));
+}
+
+function sameMemo(a: MemoRecord, b: MemoRecord): boolean {
+  const aKey = a.name || a.id;
+  const bKey = b.name || b.id;
+  return Boolean(aKey && bKey && aKey === bKey);
 }
 
 function dedupe(memos: MemoRecord[]): MemoRecord[] {

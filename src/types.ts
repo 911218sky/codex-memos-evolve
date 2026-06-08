@@ -28,6 +28,8 @@ export interface TraceInput {
   corrections?: string[];
   value?: number;
   tags?: string[];
+  memory?: "short" | "long";
+  ttlDays?: number;
 }
 
 export interface PolicyMemoInput {
@@ -77,6 +79,9 @@ export interface MemoryCounts {
   skill: number;
   feedback: number;
   environment: number;
+  maintenance: number;
+  expired: number;
+  short: number;
 }
 
 export interface PromotionResult {
@@ -85,4 +90,13 @@ export interface PromotionResult {
   version: number;
   policy: string | number | undefined;
   skill: string | number | undefined;
+}
+
+export interface MaintainInput {
+  project?: string;
+  apply?: boolean;
+  maxTraceAgeDays?: number;
+  minTraceValue?: number;
+  shortMemoryTtlDays?: number;
+  minSupport?: number;
 }

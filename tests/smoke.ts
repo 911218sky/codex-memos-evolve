@@ -74,6 +74,72 @@ await engine.recordTrace({
   tags: ["plugin", "docs"]
 });
 
+await engine.recordTrace({
+  project: "smoke",
+  task: "Temporary branch note",
+  outcome: "Only useful during this task",
+  observations: ["Drop this short memory after maintenance"],
+  corrections: [],
+  value: 1,
+  tags: ["temporary"],
+  memory: "short",
+  ttlDays: 1
+});
+
+await client.createMemo(`#codex-memos-evolve #type/trace #status/active #project/smoke #date/2020-01-01 #memory/long #topic/cleanup
+
+## Task
+Old failed cleanup attempt
+
+## Outcome
+No longer useful
+
+## Observations
+- This low-value trace should expire during maintenance.
+
+## Corrections
+- None
+
+## Value
+-5
+`);
+
+await client.createMemo(`#codex-memos-evolve #type/trace #status/active #project/smoke #date/2020-01-01 #memory/short #ttl/1 #expires/2020-01-02 #topic/expired
+
+## Task
+Expired scratch note
+
+## Outcome
+No longer useful
+
+## Observations
+- This expired short memory should not appear in recall.
+
+## Corrections
+- None
+
+## Value
+1
+`);
+
+await client.createMemo(`#codex-memos-evolve #type/trace #status/active #project/smoke #date/2020-01-01 #memory/short #topic/legacy
+
+## Task
+Legacy scratch note
+
+## Outcome
+No ttl tag was recorded
+
+## Observations
+- This legacy short memory should use the maintenance fallback TTL.
+
+## Corrections
+- None
+
+## Value
+1
+`);
+
 await client.createMemo(`#codex-memos-evolve #type/policy #status/superseded #project/smoke #support/99 #version/99
 
 ## Policy
@@ -123,6 +189,40 @@ assert.equal(recall.recall.includes("different project"), false);
 assert.equal(recall.recall.includes("FAKE_API_KEY_VALUE"), false);
 assert.equal(recall.recall.includes("docs strategy"), false);
 assert.match(recall.recall, /version=2/);
+assert.equal(recall.recall.includes("Expired scratch note"), false);
+
+const dryRunMaintenance = await engine.maintain({ project: "smoke", apply: false, shortMemoryTtlDays: 1 });
+assert.equal(dryRunMaintenance.applied, false);
+assert.equal(dryRunMaintenance.candidates.total_to_expire >= 2, true);
+assert.equal(dryRunMaintenance.marked_expired, 0);
+assert.equal(dryRunMaintenance.maintenance_memo, undefined);
+assert.equal(dryRunMaintenance.estimated_tokens_saved, undefined);
+assert.equal(dryRunMaintenance.expiring_tokens_estimate > 0, true);
+assert.equal(dryRunMaintenance.promotion_candidates.some((item) => item.topic === "legacy"), false);
+
+const appliedMaintenance = await engine.maintain({
+  project: "smoke",
+  apply: true,
+  maxTraceAgeDays: 30,
+  minTraceValue: -3,
+  shortMemoryTtlDays: 1,
+  minSupport: 2
+});
+assert.equal(appliedMaintenance.applied, true);
+assert.equal(appliedMaintenance.marked_expired >= 2, true);
+assert.ok(appliedMaintenance.maintenance_memo);
+assert.equal(appliedMaintenance.expiring_tokens_estimate > 0, true);
+assert.equal(appliedMaintenance.active_tokens_before_estimate > 0, true);
+assert.equal(appliedMaintenance.active_tokens_after_estimate > 0, true);
+assert.equal(typeof appliedMaintenance.estimated_tokens_saved, "number");
+assert.equal((appliedMaintenance.estimated_tokens_saved || 0) >= 0, true);
+
+const postMaintenanceRecall = await engine.recall({ project: "smoke", task: "Clean scratch memory", maxTokens: 900 });
+assert.equal(postMaintenanceRecall.recall.includes("Old failed cleanup attempt"), false);
+assert.equal(postMaintenanceRecall.recall.includes("Legacy scratch note"), false);
+
+const temporaryRecall = await engine.recall({ project: "smoke", task: "Temporary branch note", maxTokens: 900 });
+assert.equal(temporaryRecall.recall.includes("Temporary branch note"), true);
 
 const trivial = await engine.recall({ project: "smoke", task: "what time is it?", maxTokens: 900 });
 assert.equal(trivial.skipped, true);
@@ -138,8 +238,11 @@ await assert.rejects(() => engine.recordTrace({
 }), /Refusing to store trace/);
 
 const stats = await engine.stats({ project: "smoke" });
-assert.equal(stats.counts.trace, 2);
+assert.equal(stats.counts.trace, 6);
 assert.equal(stats.counts.skill >= 1, true);
+assert.equal(stats.counts.maintenance, 1);
+assert.equal(stats.counts.expired >= 3, true);
+assert.equal(stats.inactive_tokens_estimate > 0, true);
 assert.equal(stats.compression_ratio_estimate > 0, true);
 
 console.log(JSON.stringify({ ok: true, reflection, recall_tokens: recall.recall_tokens_estimate, stats }, null, 2));

@@ -7,10 +7,12 @@ export const TYPE_TAGS = {
   policy: "#type/policy",
   skill: "#type/skill",
   feedback: "#type/feedback",
-  environment: "#type/environment"
+  environment: "#type/environment",
+  maintenance: "#type/maintenance"
 };
 
 export const STATUS_TAGS = {
   active: "#status/active",
-  superseded: "#status/superseded"
+  superseded: "#status/superseded",
+  expired: "#status/expired"
 };

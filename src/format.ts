@@ -22,10 +22,15 @@ export function frontMatter(tags: string[]): string {
   return [MEMORY_TAG, ...tags].filter(Boolean).join(" ");
 }
 
-export function traceMemo({ project = DEFAULT_PROJECT, task, outcome, observations = [], corrections = [], value = 0, tags = [] }: TraceInput): string {
+export function traceMemo({ project = DEFAULT_PROJECT, task, outcome, observations = [], corrections = [], value = 0, tags = [], memory = "long", ttlDays }: TraceInput): string {
   const date = new Date().toISOString().slice(0, 10);
   const normalizedTags = tags.map((tag) => (tag.startsWith("#") ? tag : `#topic/${slug(tag)}`));
-  return `${frontMatter([TYPE_TAGS.trace, STATUS_TAGS.active, projectTag(project), `#date/${date}`, ...normalizedTags])}
+  const normalizedTtl = ttlDays && ttlDays > 0 ? Math.ceil(ttlDays) : undefined;
+  const memoryTags = [`#memory/${memory}`];
+  if (normalizedTtl) {
+    memoryTags.push(`#ttl/${normalizedTtl}`, `#expires/${dateAfterDays(normalizedTtl)}`);
+  }
+  return `${frontMatter([TYPE_TAGS.trace, STATUS_TAGS.active, projectTag(project), `#date/${date}`, ...memoryTags, ...normalizedTags])}
 
 ## Task
 ${task}
@@ -90,6 +95,44 @@ ${comment || "No comment"}
 ## Target
 ${target}
 `;
+}
+
+export function maintenanceMemo({
+  project = DEFAULT_PROJECT,
+  expired,
+  lowValue,
+  promoted,
+  expiringTokens,
+  netTokensSaved,
+  applied
+}: {
+  project?: string;
+  expired: number;
+  lowValue: number;
+  promoted: number;
+  expiringTokens: number;
+  netTokensSaved: number;
+  applied: boolean;
+}): string {
+  const date = new Date().toISOString().slice(0, 10);
+  return `${frontMatter([TYPE_TAGS.maintenance, STATUS_TAGS.active, projectTag(project), `#date/${date}`])}
+
+## Maintenance
+${applied ? "Applied memory maintenance." : "Previewed memory maintenance."}
+
+## Summary
+- Expired memories: ${expired}
+- Low-value traces: ${lowValue}
+- Promotions: ${promoted}
+- Expiring tokens estimate: ${expiringTokens}
+- Net active tokens saved estimate: ${netTokensSaved}
+`;
+}
+
+function dateAfterDays(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function asBullets(items: string[] | string): string {

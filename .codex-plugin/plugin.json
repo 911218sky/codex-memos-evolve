@@ -1,6 +1,6 @@
 {
   "name": "codex-memos-evolve",
-  "version": "0.1.0+codex.20260607115604",
+  "version": "0.1.0+codex.20260608174144",
   "description": "Reflect2Evolve-style Codex memory plugin backed by usememos/memos.",
   "author": {
     "name": "911218sky"
@@ -16,11 +16,13 @@
       "Memos-backed long-term memory",
       "Trace to policy promotion",
       "Skill crystallization",
-      "Token-aware recall"
+      "Token-aware recall",
+      "Short-memory maintenance"
     ],
     "defaultPrompt": [
       "Before non-trivial Codex work, call memos_evolve_recall for relevant memory.",
       "After reusable work, call memos_evolve_record_trace with durable lessons.",
+      "Use memos_evolve_maintain to preview or apply cleanup when memory is growing.",
       "Use memos_evolve_stats to verify the memory plugin is connected."
     ]
   },

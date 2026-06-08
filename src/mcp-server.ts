@@ -34,7 +34,9 @@ server.tool(
     observations: z.array(z.string()).default([]),
     corrections: z.array(z.string()).default([]),
     value: z.number().min(-10).max(10).default(0),
-    tags: z.array(z.string()).default([])
+    tags: z.array(z.string()).default([]),
+    memory: z.enum(["short", "long"]).default("long").describe("Use short for temporary task-only facts; they can expire during maintenance."),
+    ttlDays: z.number().int().min(1).max(365).optional().describe("Optional time-to-live in days for short or temporary memories.")
   },
   async (input) => jsonResult(await engine.recordTrace(input))
 );
@@ -68,6 +70,20 @@ server.tool(
     project: z.string().default("default")
   },
   async (input) => jsonResult(await engine.stats(input))
+);
+
+server.tool(
+  "memos_evolve_maintain",
+  "Preview or apply memory maintenance: expire short-lived or low-value traces, promote repeated traces, and report estimated token savings.",
+  {
+    project: z.string().default("default"),
+    apply: z.boolean().default(false).describe("False previews candidates only. True marks expired candidates and writes a maintenance summary."),
+    maxTraceAgeDays: z.number().int().min(1).max(3650).default(30),
+    minTraceValue: z.number().min(-10).max(10).default(-3),
+    shortMemoryTtlDays: z.number().int().min(1).max(365).default(1),
+    minSupport: z.number().int().min(2).max(20).default(2)
+  },
+  async (input) => jsonResult(await engine.maintain(input))
 );
 
 const transport = new StdioServerTransport();

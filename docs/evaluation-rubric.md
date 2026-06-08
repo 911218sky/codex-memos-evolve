@@ -13,7 +13,7 @@ The rubric checks one question: does the plugin make repeated Codex work easier 
 | Policy promotion | 20 | Repeated traces create policy memos with support counts. |
 | Skill creation | 20 | Stable lessons create compact skill memos with workflow and version. |
 | Token saving | 15 | Recall is budgeted and smaller than raw matching memory. |
-| Feedback | 10 | Useful, wrong, stale, broad, or noisy memory can be rated. |
+| Feedback and maintenance | 10 | Useful, wrong, stale, broad, noisy, short-lived, or low-value memory can be rated or expired. |
 | Safety | 5 | Secrets are rejected or suppressed; user instructions outrank memory. |
 
 ## Passing Bar
@@ -37,7 +37,7 @@ The validation should show:
 - smoke tests pass
 - MCP smoke tests pass
 - score script passes
-- all five MCP tools are available
+- all six MCP tools are available
 
 ## Token-Saving Checks
 
@@ -47,13 +47,14 @@ A good run should prove that:
 - active project facts are kept
 - stale, superseded, secret-looking, and unrelated records are suppressed
 - repeated traces promote at least one policy or skill
+- short-lived or expired traces can be excluded by maintenance
 - token estimates and selected candidate counts are reported
 
 ## Still Missing
 
 These gaps are expected for the prototype:
 
-- no automatic Codex lifecycle hooks yet
+- no automatic Codex runtime lifecycle hooks yet; maintenance is called manually or from an external scheduler
 - no embedding or LLM clustering
 - no generated skill installation into real Codex skill folders
 - no long-history stress test with hundreds of traces

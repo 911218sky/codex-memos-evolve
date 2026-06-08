@@ -135,6 +135,7 @@ memos_evolve_record_trace
 memos_evolve_reflect
 memos_evolve_feedback
 memos_evolve_stats
+memos_evolve_maintain
 ```
 
 It should also load the skill:
@@ -152,7 +153,7 @@ codex mcp list
 bun run mcp:smoke
 ```
 
-`codex mcp list` confirms Codex knows about enabled MCP servers. `bun run mcp:smoke` is a local validation script that starts the same Node MCP entrypoint and confirms it lists 5 tools.
+`codex mcp list` confirms Codex knows about enabled MCP servers. `bun run mcp:smoke` is a local validation script that starts the same Node MCP entrypoint and confirms it lists 6 tools.
 
 ## 6. If MCP Startup Is Incomplete
 
@@ -172,7 +173,7 @@ Then check:
 
 | `bun run mcp:smoke` result | Meaning | Next step |
 | --- | --- | --- |
-| Passes and lists 5 tools | The plugin MCP server works locally. | Reinstall or refresh the plugin, then open a new Codex thread. |
+| Passes and lists 6 tools | The plugin MCP server works locally. | Reinstall or refresh the plugin, then open a new Codex thread. |
 | `MEMOS_PAT is required` | The token is missing from `.env` or the Codex process environment. | Fix `.env` or export `MEMOS_PAT`. |
 | Connection refused | Memos is not reachable. | Start Memos or correct `MEMOS_BASE_URL`. |
 | Codex still shows no tools | Codex is using an old plugin cache or wrong root. | Reinstall the plugin and confirm the installed plugin path. |

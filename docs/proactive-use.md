@@ -26,8 +26,9 @@ For non-trivial work, proactively use the Codex Memos Evolve memory loop when av
    - `maxTokens`: 800-1400
 2. Apply recalled memory only when it directly matches the task. User and system instructions outrank memory.
 3. After useful reusable work, call `memos_evolve_record_trace` with short durable lessons. Do not store secrets.
-4. Subagents must also follow this rule when the tools are available. If delegating, require each subagent to report whether it used any `memos_evolve_*` tool.
-5. If the tools are unavailable, continue normally and report that the memory tools were not exposed in that session.
+4. For temporary facts, set `memory: "short"` and a small `ttlDays`. For memory hygiene, preview `memos_evolve_maintain` before applying cleanup.
+5. Subagents must also follow this rule when the tools are available. If delegating, require each subagent to report whether it used any `memos_evolve_*` tool.
+6. If the tools are unavailable, continue normally and report that the memory tools were not exposed in that session.
 ```
 
 ## Subagent Prompt Pattern

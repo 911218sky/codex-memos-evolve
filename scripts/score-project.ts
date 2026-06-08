@@ -12,6 +12,7 @@ const required = [
   "skills/memos-evolve/SKILL.md",
   "docs/evaluation-rubric.md",
   "docs/install.md",
+  "docs/maintenance.md",
   "docs/proactive-use.md",
   "docs/subagent-review.md",
   "tests/smoke.ts",
@@ -30,6 +31,7 @@ checks.push({ name: "token-aware-recall", pass: evolver.includes("maxTokens") &&
 checks.push({ name: "usememos-api-client", pass: fs.readFileSync(path.join(root, "src/memos-client.ts"), "utf8").includes("/api/v1/memos"), weight: 2 });
 checks.push({ name: "secret-safety", pass: fs.readFileSync(path.join(root, "skills/memos-evolve/SKILL.md"), "utf8").includes("Do not store secrets"), weight: 1 });
 checks.push({ name: "stale-memory-suppression", pass: evolver.includes("STATUS_TAGS.superseded") && evolver.includes("isActive"), weight: 2 });
+checks.push({ name: "short-memory-maintenance", pass: evolver.includes("maintain") && evolver.includes("#memory/short") && fs.readFileSync(path.join(root, "tests/smoke.ts"), "utf8").includes("shortMemoryTtlDays"), weight: 2 });
 checks.push({ name: "secret-recall-redaction", pass: evolver.includes("looksSecret") && fs.readFileSync(path.join(root, "tests/smoke.ts"), "utf8").includes("FAKE_API_KEY_VALUE"), weight: 2 });
 checks.push({ name: "mcp-client-smoke", pass: fs.readFileSync(path.join(root, "tests/mcp-smoke.ts"), "utf8").includes("callTool"), weight: 2 });
 checks.push({ name: "feedback-affects-recall", pass: evolver.includes("feedbackIndex") && fs.readFileSync(path.join(root, "tests/smoke.ts"), "utf8").includes("rating: -5"), weight: 2 });

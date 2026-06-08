@@ -8,7 +8,7 @@ description: Proactively use the codex-memos-evolve MCP memory tools for non-tri
 Use the `codex-memos-evolve` MCP tools as a small memory loop:
 
 ```text
-recall -> work -> record trace -> reflect -> reuse
+recall -> work -> record trace -> reflect/maintain -> reuse
 ```
 
 ## Default Behavior
@@ -64,6 +64,8 @@ Store short, grounded facts:
 - corrections
 - value
 - topic tags
+- `memory: "short"` and `ttlDays` for temporary task state
+- `memory: "long"` for durable lessons
 
 Then run reflection when two or more related traces exist:
 
@@ -83,6 +85,14 @@ Use stats after cleanup or validation:
 memos_evolve_stats
 ```
 
+Use maintenance when memory is growing, temporary notes are no longer useful, or a task asks for memory hygiene:
+
+```text
+memos_evolve_maintain
+```
+
+Start with `apply: false` to preview candidates. Use `apply: true` when the proposed expired or low-value traces are safe to mark `#status/expired`.
+
 ## What To Store
 
 Store reusable signals:
@@ -92,6 +102,8 @@ Store reusable signals:
 - corrections that should change future behavior
 - environment knowledge that saves rediscovery
 - verification habits that prevented bugs
+
+Store short-lived signals only when they help the current project but should fade, such as temporary branch state, one-off debugging facts, or setup details that will expire. Mark them `memory: "short"` with a small `ttlDays`.
 
 Do not store secrets, bearer tokens, cookies, API keys, private credentials, full logs, raw transcripts, or one-time details.
 
@@ -108,10 +120,14 @@ Use clear tags:
 #type/policy
 #type/skill
 #type/feedback
+#type/maintenance
 #topic/testing
 #topic/mcp
 #topic/security
 #status/active
+#status/expired
+#memory/short
+#ttl/<days>
 ```
 
 Keep one durable idea per memo. Mark old guidance as `#status/superseded` or `#status/deprecated` when a newer rule replaces it.
