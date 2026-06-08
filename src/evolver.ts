@@ -22,6 +22,10 @@ function has(content: string, tag: string): boolean {
   return content.includes(tag);
 }
 
+function hasTag(content: string, tag: string): boolean {
+  return content.split(/\s+/).includes(tag);
+}
+
 function isActive(content: string): boolean {
   return content.includes(STATUS_TAGS.active) && !content.includes(STATUS_TAGS.superseded) && !content.includes(STATUS_TAGS.expired);
 }
@@ -84,6 +88,12 @@ function markExpired(content: string): string {
   if (content.includes(STATUS_TAGS.expired)) return content;
   if (content.includes(STATUS_TAGS.active)) return content.replace(STATUS_TAGS.active, STATUS_TAGS.expired);
   return `${content.trim()}\n\n${STATUS_TAGS.expired}\n`;
+}
+
+function markSuperseded(content: string): string {
+  if (content.includes(STATUS_TAGS.superseded)) return content;
+  if (content.includes(STATUS_TAGS.active)) return content.replace(STATUS_TAGS.active, STATUS_TAGS.superseded);
+  return `${content.trim()}\n\n${STATUS_TAGS.superseded}\n`;
 }
 
 function shouldSkipRecall(task: string): boolean {
@@ -154,7 +164,7 @@ export class EvolveEngine {
     const merged = dedupe([...taskMemos, ...pluginMemos]);
     const activeProject = merged.filter((memo) => {
       const content = contentOf(memo);
-      return content.includes(projectTag(project)) && isActive(content) && !isExpired(content) && !looksSecret(content);
+      return hasTag(content, projectTag(project)) && isActive(content) && !isExpired(content) && !looksSecret(content);
     });
     const feedbacks = activeProject.filter((memo) => has(contentOf(memo), TYPE_TAGS.feedback));
     const feedbackScore = feedbackIndex(feedbacks);
@@ -204,12 +214,13 @@ export class EvolveEngine {
 
   async reflect({ project = DEFAULT_PROJECT, minSupport = 2 }: ReflectInput = {}) {
     const memos = await this.client.listPluginMemos(500);
-    const projectMemos = memos.filter((memo) => contentOf(memo).includes(projectTag(project)));
+    const projectMemos = memos.filter((memo) => hasTag(contentOf(memo), projectTag(project)));
     const traces = projectMemos.filter((memo) => {
       const content = contentOf(memo);
       return has(content, TYPE_TAGS.trace) && isActive(content) && !isExpired(content) && !looksSecret(content);
     });
     const existingSkills = projectMemos.filter((memo) => has(contentOf(memo), TYPE_TAGS.skill));
+    const existingPolicies = projectMemos.filter((memo) => has(contentOf(memo), TYPE_TAGS.policy));
     const byTopic = new Map<string, MemoRecord[]>();
     for (const trace of traces) {
       for (const topic of topicCandidates(contentOf(trace)).slice(0, 2)) {
@@ -222,7 +233,7 @@ export class EvolveEngine {
     for (const [topic, topicTraces] of byTopic.entries()) {
       if (topicTraces.length < minSupport) continue;
       const prior = existingSkills
-        .filter((memo) => contentOf(memo).includes(skillTag(topic)))
+        .filter((memo) => hasTag(contentOf(memo), skillTag(topic)))
         .sort(byVersion)[0];
       const version = prior ? extractVersion(contentOf(prior)) + 1 : 1;
       const support = topicTraces.length;
@@ -251,6 +262,12 @@ export class EvolveEngine {
           "After finishing, record whether the skill helped and what should change."
         ]
       }));
+      for (const oldMemo of [...existingPolicies, ...existingSkills].filter((memo) => {
+        const content = contentOf(memo);
+        return hasTag(content, skillTag(topic)) && isActive(content) && !isExpired(content);
+      })) {
+        await this.client.updateMemo(oldMemo, markSuperseded(contentOf(oldMemo)));
+      }
       promoted.push({ topic: slug(topic), support, version, policy: policy.name || policy.id, skill: skill.name || skill.id });
     }
 
@@ -272,7 +289,7 @@ export class EvolveEngine {
 
   async stats({ project = DEFAULT_PROJECT }: StatsInput = {}) {
     const memos = await this.client.listPluginMemos(500);
-    const projectMemos = memos.filter((memo) => contentOf(memo).includes(projectTag(project)));
+    const projectMemos = memos.filter((memo) => hasTag(contentOf(memo), projectTag(project)));
     const counts: MemoryCounts = { trace: 0, policy: 0, skill: 0, feedback: 0, environment: 0, maintenance: 0, expired: 0, short: 0 };
     for (const memo of projectMemos) {
       const content = contentOf(memo);
@@ -313,7 +330,7 @@ export class EvolveEngine {
     minSupport = 2
   }: MaintainInput = {}) {
     const memos = await this.client.listPluginMemos(500);
-    const projectMemos = memos.filter((memo) => contentOf(memo).includes(projectTag(project)));
+    const projectMemos = memos.filter((memo) => hasTag(contentOf(memo), projectTag(project)));
     const traces = projectMemos.filter((memo) => has(contentOf(memo), TYPE_TAGS.trace) && !looksSecret(contentOf(memo)));
     const activeBefore = projectMemos.filter((memo) => {
       const content = contentOf(memo);
@@ -354,7 +371,7 @@ export class EvolveEngine {
     const reflection = apply ? await this.reflect({ project, minSupport }) : { promoted: [] as PromotionResult[] };
     const activeAfter = apply
       ? (await this.client.listPluginMemos(500))
-        .filter((memo) => contentOf(memo).includes(projectTag(project)))
+        .filter((memo) => hasTag(contentOf(memo), projectTag(project)))
         .filter((memo) => {
           const content = contentOf(memo);
           return isActive(content) && !isExpired(content) && !looksSecret(content);

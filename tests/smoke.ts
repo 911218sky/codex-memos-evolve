@@ -158,6 +158,24 @@ unrelated project strategy
 This belongs to a different project and should not appear.
 `);
 
+await client.createMemo(`#codex-memos-evolve #type/trace #status/active #project/smoke-extra #date/2020-01-01 #memory/long #topic/prefix
+
+## Task
+Prefix project trace
+
+## Outcome
+This belongs to a project whose tag only starts with smoke.
+
+## Observations
+- Exact project tag matching should exclude this from smoke.
+
+## Corrections
+- Do not match project tags by prefix.
+
+## Value
+-9
+`);
+
 await client.createMemo(`#codex-memos-evolve #type/policy #status/active #project/smoke #support/99 #version/1
 
 ## Policy
@@ -172,6 +190,13 @@ assert.equal(reflection.promoted.length >= 1, true);
 
 const reflection2 = await engine.reflect({ project: "smoke", minSupport: 2 });
 assert.equal(reflection2.promoted.some((item) => item.version === 2), true);
+const afterReflectionMemos = await client.searchMemos("#codex-memos-evolve #project/smoke", 100);
+const activePluginPolicies = afterReflectionMemos.filter((memo) => String(memo.content || "").includes("#type/policy") && String(memo.content || "").includes("#skill/plugin") && String(memo.content || "").includes("#status/active"));
+const activePluginSkills = afterReflectionMemos.filter((memo) => String(memo.content || "").includes("#type/skill") && String(memo.content || "").includes("#skill/plugin") && String(memo.content || "").includes("#status/active"));
+assert.equal(activePluginPolicies.length, 1);
+assert.equal(activePluginSkills.length, 1);
+assert.equal(String(activePluginPolicies[0]?.content || "").includes("#version/2"), true);
+assert.equal(String(activePluginSkills[0]?.content || "").includes("#version/2"), true);
 
 await engine.feedback({
   project: "smoke",
@@ -186,6 +211,7 @@ assert.equal(recall.recall_tokens_estimate <= 900, true);
 assert.equal(recall.estimated_tokens_saved / recall.raw_tokens_estimate >= 0.5, true);
 assert.equal(recall.recall.includes("Always dump every raw memo"), false);
 assert.equal(recall.recall.includes("different project"), false);
+assert.equal(recall.recall.includes("Prefix project trace"), false);
 assert.equal(recall.recall.includes("FAKE_API_KEY_VALUE"), false);
 assert.equal(recall.recall.includes("docs strategy"), false);
 assert.match(recall.recall, /version=2/);
@@ -194,11 +220,13 @@ assert.equal(recall.recall.includes("Expired scratch note"), false);
 const dryRunMaintenance = await engine.maintain({ project: "smoke", apply: false, shortMemoryTtlDays: 1 });
 assert.equal(dryRunMaintenance.applied, false);
 assert.equal(dryRunMaintenance.candidates.total_to_expire >= 2, true);
+assert.equal(dryRunMaintenance.candidates.total_to_expire, 3);
 assert.equal(dryRunMaintenance.marked_expired, 0);
 assert.equal(dryRunMaintenance.maintenance_memo, undefined);
 assert.equal(dryRunMaintenance.estimated_tokens_saved, undefined);
 assert.equal(dryRunMaintenance.expiring_tokens_estimate > 0, true);
 assert.equal(dryRunMaintenance.promotion_candidates.some((item) => item.topic === "legacy"), false);
+assert.equal(dryRunMaintenance.promotion_candidates.some((item) => item.topic === "prefix"), false);
 
 const appliedMaintenance = await engine.maintain({
   project: "smoke",
@@ -244,5 +272,9 @@ assert.equal(stats.counts.maintenance, 1);
 assert.equal(stats.counts.expired >= 3, true);
 assert.equal(stats.inactive_tokens_estimate > 0, true);
 assert.equal(stats.compression_ratio_estimate > 0, true);
+
+const prefixStats = await engine.stats({ project: "smoke-extra" });
+assert.equal(prefixStats.counts.trace, 1);
+assert.equal(prefixStats.counts.maintenance, 0);
 
 console.log(JSON.stringify({ ok: true, reflection, recall_tokens: recall.recall_tokens_estimate, stats }, null, 2));
