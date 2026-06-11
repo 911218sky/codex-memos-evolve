@@ -5,9 +5,6 @@ import { z } from "zod";
 import { MemosClient } from "./memos-client.ts";
 import { EvolveEngine } from "./evolver.ts";
 
-const client = new MemosClient();
-const engine = new EvolveEngine(client);
-
 const server = new McpServer({
   name: "codex-memos-evolve",
   version: "0.1.0"
@@ -21,7 +18,7 @@ server.tool(
     project: z.string().default("default").describe("Project or repository name, for example codex-memos-evolve."),
     maxTokens: z.number().int().min(200).max(4000).default(1400).describe("Approximate token budget for recall output.")
   },
-  async (input) => jsonResult(await engine.recall(input))
+  async (input) => withEngine((engine) => engine.recall(input))
 );
 
 server.tool(
@@ -38,7 +35,7 @@ server.tool(
     memory: z.enum(["short", "long"]).default("long").describe("Use short for temporary task-only facts; they can expire during maintenance."),
     ttlDays: z.number().int().min(1).max(365).optional().describe("Optional time-to-live in days for short or temporary memories.")
   },
-  async (input) => jsonResult(await engine.recordTrace(input))
+  async (input) => withEngine((engine) => engine.recordTrace(input))
 );
 
 server.tool(
@@ -48,7 +45,7 @@ server.tool(
     project: z.string().default("default"),
     minSupport: z.number().int().min(2).max(20).default(2)
   },
-  async (input) => jsonResult(await engine.reflect(input))
+  async (input) => withEngine((engine) => engine.reflect(input))
 );
 
 server.tool(
@@ -60,7 +57,7 @@ server.tool(
     rating: z.number().int().min(-5).max(5),
     comment: z.string().default("")
   },
-  async (input) => jsonResult(await engine.feedback(input))
+  async (input) => withEngine((engine) => engine.feedback(input))
 );
 
 server.tool(
@@ -69,7 +66,7 @@ server.tool(
   {
     project: z.string().default("default")
   },
-  async (input) => jsonResult(await engine.stats(input))
+  async (input) => withEngine((engine) => engine.stats(input))
 );
 
 server.tool(
@@ -83,11 +80,16 @@ server.tool(
     shortMemoryTtlDays: z.number().int().min(1).max(365).default(1),
     minSupport: z.number().int().min(2).max(20).default(2)
   },
-  async (input) => jsonResult(await engine.maintain(input))
+  async (input) => withEngine((engine) => engine.maintain(input))
 );
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
+
+async function withEngine<T>(callback: (engine: EvolveEngine) => Promise<T>) {
+  const engine = new EvolveEngine(new MemosClient());
+  return jsonResult(await callback(engine));
+}
 
 function jsonResult(value: unknown) {
   return {

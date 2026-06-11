@@ -28,6 +28,29 @@ const serverEntry = mcpArgs[mcpArgs.length - 1];
 assert.ok(serverEntry);
 assert.ok(fs.existsSync(path.resolve(root, serverEntry)));
 
+function envWithoutMemos(): Record<string, string> {
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+  );
+  delete env.MEMOS_PAT;
+  delete env.MEMOS_BASE_URL;
+  delete env.MEMOS_EVOLVE_FORCE_LOCAL;
+  delete env.MEMOS_EVOLVE_LOCAL_FILE;
+  return env;
+}
+
+const discoveryTransport = new StdioClientTransport({
+  command: mcpServer.command,
+  args: mcpArgs,
+  cwd: root,
+  env: envWithoutMemos()
+});
+const discoveryClient = new Client({ name: "codex-memos-evolve-discovery-test", version: "0.1.0" });
+await discoveryClient.connect(discoveryTransport);
+const discoveryTools = await discoveryClient.listTools();
+assert.equal(discoveryTools.tools.length, 6);
+await discoveryClient.close();
+
 const transport = new StdioClientTransport({
   command: mcpServer.command,
   args: mcpArgs,
