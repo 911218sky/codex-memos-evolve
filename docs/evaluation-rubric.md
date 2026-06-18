@@ -29,7 +29,7 @@ The rubric checks one question: does the plugin make repeated Codex work easier 
 Run:
 
 ```bash
-bun run validate
+npm run validate
 ```
 
 The validation should show:

@@ -6,17 +6,17 @@ Use this guide when you want to run the plugin against a real Memos server.
 
 You need:
 
-- Bun 1.3 or newer
+- Node.js 18 or newer
 - Codex with MCP plugin support
 - A running Memos server
 - A Memos personal access token
 
-Bun is used for local development and validation scripts. The installed Codex MCP server runs with Node from `.mcp.json`.
+Node.js is used for local development, validation scripts, and the installed Codex MCP server.
 
-Check Bun:
+Check Node:
 
 ```bash
-bun --version
+node --version
 ```
 
 Check that your Codex CLI has plugin commands:
@@ -30,7 +30,7 @@ codex plugin --help
 ```bash
 git clone https://github.com/911218sky/codex-memos-evolve.git
 cd codex-memos-evolve
-bun install
+npm install
 ```
 
 ## 3. Start Memos
@@ -78,7 +78,7 @@ Do not commit `.env`. It is ignored by git.
 ## 5. Validate
 
 ```bash
-bun run validate
+npm run validate
 ```
 
 This runs:
@@ -94,14 +94,14 @@ Validate the Codex plugin manifest:
 python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
 ```
 
-If `CODEX_HOME` is not set, it usually means your Codex configuration directory. Common values are `~/.codex` or a workspace-specific Codex home such as `/home/sbplab/sky/.tools/codex/config`.
+If `CODEX_HOME` is not set, it usually means your Codex configuration directory. Common values are `~/.codex` or another runtime-specific config directory.
 
 ## 6. Manual MCP Check
 
 For the MCP path only:
 
 ```bash
-bun run mcp:smoke
+npm run mcp:smoke
 ```
 
 If Codex reports MCP startup incomplete, continue with [Codex Installation](codex-install.md#6-if-mcp-startup-is-incomplete).
@@ -109,7 +109,7 @@ If Codex reports MCP startup incomplete, continue with [Codex Installation](code
 For a raw stdio server:
 
 ```bash
-node --no-warnings --experimental-strip-types ./src/mcp-server.ts
+node ./dist/src/mcp-server.js
 ```
 
 The raw stdio server waits for an MCP client, so no prompt is expected.
@@ -146,7 +146,7 @@ Normal mode requires `MEMOS_PAT`.
 Use local JSON only for tests or offline development:
 
 ```bash
-MEMOS_EVOLVE_FORCE_LOCAL=1 bun run validate
+MEMOS_EVOLVE_FORCE_LOCAL=1 npm run validate
 ```
 
 Local records are written to `.data/local-memos.json` and will not appear in the Memos web UI.

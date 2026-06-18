@@ -5,7 +5,7 @@ import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const root = path.resolve(new URL("..", import.meta.url).pathname);
+const root = process.cwd();
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-memos-evolve-mcp-"));
 const mcpConfig = JSON.parse(fs.readFileSync(path.join(root, ".mcp.json"), "utf8")) as {
   mcpServers: {
@@ -19,8 +19,8 @@ const mcpConfig = JSON.parse(fs.readFileSync(path.join(root, ".mcp.json"), "utf8
 const mcpServer = mcpConfig.mcpServers["codex-memos-evolve"];
 const mcpArgs = mcpServer.args || [];
 assert.ok(
-  ["bun", "node"].includes(mcpServer.command) || fs.existsSync(mcpServer.command),
-  "MCP command must be bun/node on PATH or an existing executable path"
+  mcpServer.command === "node" || fs.existsSync(mcpServer.command),
+  "MCP command must be node on PATH or an existing executable path"
 );
 assert.ok(mcpArgs.length >= 1);
 assert.ok(mcpArgs[0]);
@@ -45,7 +45,7 @@ const discoveryTransport = new StdioClientTransport({
   cwd: root,
   env: envWithoutMemos()
 });
-const discoveryClient = new Client({ name: "codex-memos-evolve-discovery-test", version: "0.1.0" });
+const discoveryClient = new Client({ name: "codex-memos-evolve-discovery-test", version: "0.1.1" });
 await discoveryClient.connect(discoveryTransport);
 const discoveryTools = await discoveryClient.listTools();
 assert.equal(discoveryTools.tools.length, 6);
@@ -63,7 +63,7 @@ const transport = new StdioClientTransport({
   }
 });
 
-const client = new Client({ name: "codex-memos-evolve-test", version: "0.1.0" });
+const client = new Client({ name: "codex-memos-evolve-test", version: "0.1.1" });
 await client.connect(transport);
 
 function firstText(result: unknown): string {

@@ -4,9 +4,7 @@
       "cwd": ".",
       "command": "node",
       "args": [
-        "--no-warnings",
-        "--experimental-strip-types",
-        "./src/mcp-server.ts"
+        "./dist/src/mcp-server.js"
       ],
       "env": {
         "MEMOS_BASE_URL": "http://localhost:5230",

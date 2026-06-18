@@ -1,5 +1,5 @@
-import { DEFAULT_PROJECT, MEMORY_TAG, STATUS_TAGS, TYPE_TAGS } from "./constants.ts";
-import type { FeedbackInput, PolicyMemoInput, SkillMemoInput, TraceInput } from "./types.ts";
+import { DEFAULT_PROJECT, MEMORY_TAG, STATUS_TAGS, TYPE_TAGS } from "./constants.js";
+import type { FeedbackInput, PolicyMemoInput, SkillMemoInput, TraceInput } from "./types.js";
 
 export function projectTag(project = DEFAULT_PROJECT): string {
   return `#project/${slug(project)}`;

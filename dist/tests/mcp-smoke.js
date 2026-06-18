@@ -1,0 +1,104 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+const root = process.cwd();
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-memos-evolve-mcp-"));
+const mcpConfig = JSON.parse(fs.readFileSync(path.join(root, ".mcp.json"), "utf8"));
+const mcpServer = mcpConfig.mcpServers["codex-memos-evolve"];
+const mcpArgs = mcpServer.args || [];
+assert.ok(mcpServer.command === "node" || fs.existsSync(mcpServer.command), "MCP command must be node on PATH or an existing executable path");
+assert.ok(mcpArgs.length >= 1);
+assert.ok(mcpArgs[0]);
+const serverEntry = mcpArgs[mcpArgs.length - 1];
+assert.ok(serverEntry);
+assert.ok(fs.existsSync(path.resolve(root, serverEntry)));
+function envWithoutMemos() {
+    const env = Object.fromEntries(Object.entries(process.env).filter((entry) => typeof entry[1] === "string"));
+    delete env.MEMOS_PAT;
+    delete env.MEMOS_BASE_URL;
+    delete env.MEMOS_EVOLVE_FORCE_LOCAL;
+    delete env.MEMOS_EVOLVE_LOCAL_FILE;
+    return env;
+}
+const discoveryTransport = new StdioClientTransport({
+    command: mcpServer.command,
+    args: mcpArgs,
+    cwd: root,
+    env: envWithoutMemos()
+});
+const discoveryClient = new Client({ name: "codex-memos-evolve-discovery-test", version: "0.1.1" });
+await discoveryClient.connect(discoveryTransport);
+const discoveryTools = await discoveryClient.listTools();
+assert.equal(discoveryTools.tools.length, 6);
+await discoveryClient.close();
+const transport = new StdioClientTransport({
+    command: mcpServer.command,
+    args: mcpArgs,
+    cwd: root,
+    env: {
+        ...process.env,
+        ...mcpServer.env,
+        MEMOS_EVOLVE_FORCE_LOCAL: "1",
+        MEMOS_EVOLVE_LOCAL_FILE: path.join(dir, "memos.json")
+    }
+});
+const client = new Client({ name: "codex-memos-evolve-test", version: "0.1.1" });
+await client.connect(transport);
+function firstText(result) {
+    const content = result.content;
+    return content?.[0]?.text || "";
+}
+const tools = await client.listTools();
+const names = tools.tools.map((tool) => tool.name);
+assert.deepEqual(names.sort(), [
+    "memos_evolve_feedback",
+    "memos_evolve_maintain",
+    "memos_evolve_recall",
+    "memos_evolve_record_trace",
+    "memos_evolve_reflect",
+    "memos_evolve_stats"
+]);
+await client.callTool({
+    name: "memos_evolve_record_trace",
+    arguments: {
+        project: "mcp-smoke",
+        task: "Test MCP tool invocation",
+        outcome: "Tool call worked",
+        observations: ["MCP client can call server"],
+        corrections: ["Keep recall compact"],
+        value: 3,
+        tags: ["mcp", "plugin"]
+    }
+});
+const recall = await client.callTool({
+    name: "memos_evolve_recall",
+    arguments: {
+        project: "mcp-smoke",
+        task: "Use MCP plugin memory",
+        maxTokens: 600
+    }
+});
+const text = firstText(recall);
+assert.match(text, /Memos Evolve Recall/);
+const trivial = await client.callTool({
+    name: "memos_evolve_recall",
+    arguments: {
+        project: "mcp-smoke",
+        task: "what time is it?",
+        maxTokens: 600
+    }
+});
+assert.match(firstText(trivial), /trivial-task-gate/);
+const maintenance = await client.callTool({
+    name: "memos_evolve_maintain",
+    arguments: {
+        project: "mcp-smoke",
+        apply: false
+    }
+});
+assert.match(firstText(maintenance), /Dry run only/);
+await client.close();
+console.log(JSON.stringify({ ok: true, tools: names.length }, null, 2));

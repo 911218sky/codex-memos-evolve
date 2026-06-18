@@ -1,10 +1,11 @@
 {
   "name": "codex-memos-evolve",
-  "version": "0.1.0+codex.20260608191043",
+  "version": "0.1.1",
   "description": "Reflect2Evolve-style Codex memory plugin backed by usememos/memos.",
   "author": {
     "name": "911218sky"
   },
+  "license": "AGPL-3.0-only",
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Memos Evolve",

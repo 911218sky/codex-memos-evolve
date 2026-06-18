@@ -1,37 +1,28 @@
 import fs from "node:fs";
 import path from "node:path";
-
 const root = process.cwd();
-const manifest = JSON.parse(fs.readFileSync(path.join(root, ".codex-plugin/plugin.json"), "utf8")) as {
-  version?: string;
-  license?: string;
-};
-const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")) as {
-  version?: string;
-  license?: string;
-};
+const manifest = JSON.parse(fs.readFileSync(path.join(root, ".codex-plugin/plugin.json"), "utf8"));
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const required = [
-  ".codex-plugin/plugin.json",
-  ".mcp.json",
-  "AGENTS.md",
-  "src/mcp-server.ts",
-  "src/evolver.ts",
-  "src/memos-client.ts",
-  "skills/memos-evolve/SKILL.md",
-  "docs/evaluation-rubric.md",
-  "docs/install.md",
-  "docs/maintenance.md",
-  "docs/proactive-use.md",
-  "docs/subagent-review.md",
-  "tests/smoke.ts",
-  "tests/mcp-smoke.ts"
+    ".codex-plugin/plugin.json",
+    ".mcp.json",
+    "AGENTS.md",
+    "src/mcp-server.ts",
+    "src/evolver.ts",
+    "src/memos-client.ts",
+    "skills/memos-evolve/SKILL.md",
+    "docs/evaluation-rubric.md",
+    "docs/install.md",
+    "docs/maintenance.md",
+    "docs/proactive-use.md",
+    "docs/subagent-review.md",
+    "tests/smoke.ts",
+    "tests/mcp-smoke.ts"
 ];
-
 const checks = [];
 for (const rel of required) {
-  checks.push({ name: `file:${rel}`, pass: fs.existsSync(path.join(root, rel)), weight: 1 });
+    checks.push({ name: `file:${rel}`, pass: fs.existsSync(path.join(root, rel)), weight: 1 });
 }
-
 const evolver = fs.readFileSync(path.join(root, "src/evolver.ts"), "utf8");
 checks.push({ name: "trace-to-policy", pass: evolver.includes("recordTrace") && evolver.includes("policyMemo"), weight: 2 });
 checks.push({ name: "policy-to-skill", pass: evolver.includes("skillMemo") && evolver.includes("support"), weight: 2 });
@@ -48,31 +39,26 @@ checks.push({ name: "minimum-savings-assertion", pass: fs.readFileSync(path.join
 checks.push({ name: "manifest-pure-semver", pass: /^\d+\.\d+\.\d+$/.test(manifest.version || ""), weight: 2 });
 checks.push({ name: "manifest-package-version-match", pass: manifest.version === packageJson.version, weight: 2 });
 checks.push({ name: "agpl-license", pass: manifest.license === "AGPL-3.0-only" && packageJson.license === "AGPL-3.0-only", weight: 1 });
-const mcpConfig = JSON.parse(fs.readFileSync(path.join(root, ".mcp.json"), "utf8")) as {
-  mcpServers?: { "codex-memos-evolve"?: { command?: string; args?: string[] } };
-};
+const mcpConfig = JSON.parse(fs.readFileSync(path.join(root, ".mcp.json"), "utf8"));
 const mcpServer = mcpConfig.mcpServers?.["codex-memos-evolve"];
 checks.push({
-  name: "node-mcp-runtime",
-  pass: mcpServer?.command === "node" && (mcpServer.args || []).includes("./dist/src/mcp-server.js"),
-  weight: 2
+    name: "node-mcp-runtime",
+    pass: mcpServer?.command === "node" && (mcpServer.args || []).includes("./dist/src/mcp-server.js"),
+    weight: 2
 });
-
 const agentsInstructions = fs.readFileSync(path.join(root, "AGENTS.md"), "utf8");
 const proactiveUse = fs.readFileSync(path.join(root, "docs/proactive-use.md"), "utf8");
 checks.push({
-  name: "proactive-agent-instructions",
-  pass:
-    agentsInstructions.includes("memos_evolve_recall") &&
-    agentsInstructions.includes("Subagents must also") &&
-    proactiveUse.includes("Current Runtime Boundary"),
-  weight: 2
+    name: "proactive-agent-instructions",
+    pass: agentsInstructions.includes("memos_evolve_recall") &&
+        agentsInstructions.includes("Subagents must also") &&
+        proactiveUse.includes("Current Runtime Boundary"),
+    weight: 2
 });
-
 const earned = checks.filter((c) => c.pass).reduce((sum, c) => sum + c.weight, 0);
 const total = checks.reduce((sum, c) => sum + c.weight, 0);
 const score = Math.round((earned / total) * 100);
-
 const result = { score, earned, total, checks };
 console.log(JSON.stringify(result, null, 2));
-if (score < 85) process.exit(1);
+if (score < 85)
+    process.exit(1);

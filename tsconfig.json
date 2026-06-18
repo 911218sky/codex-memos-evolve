@@ -11,8 +11,9 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "allowImportingTsExtensions": true,
-    "noEmit": true
+    "rootDir": ".",
+    "outDir": "dist",
+    "declaration": false
   },
   "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]
 }

@@ -22,7 +22,7 @@ The plugin now makes proactive recall the default instructed behavior for non-tr
 
 ## Requirements
 
-- Bun 1.3 or newer
+- Node.js 18 or newer
 - Codex with plugin and MCP support
 - A running Memos server
 - A Memos personal access token for `MEMOS_PAT`
@@ -44,7 +44,7 @@ If that command is missing, use a Codex build or surface that includes plugin an
 ```bash
 git clone https://github.com/911218sky/codex-memos-evolve.git
 cd codex-memos-evolve
-bun install
+npm install
 ```
 
 2. Create `.env`:
@@ -64,7 +64,7 @@ MEMOS_PAT=<your-personal-access-token>
 3. Validate:
 
 ```bash
-bun run validate
+npm run validate
 ```
 
 4. Install or refresh the Codex plugin:
@@ -74,7 +74,7 @@ codex plugin add codex-memos-evolve@sky-tools
 ```
 
 This assumes your Codex setup exposes this plugin through the local or personal `sky-tools` marketplace.
-The installed Codex MCP server runs with Node from `.mcp.json`; Bun is used for local development and validation scripts.
+The installed Codex MCP server runs with Node from `.mcp.json`.
 
 For another local marketplace:
 
@@ -142,7 +142,7 @@ You normally do not call these directly. The `memos-evolve` skill tells Codex wh
 If Codex says MCP startup is incomplete:
 
 ```bash
-bun run mcp:smoke
+npm run mcp:smoke
 ```
 
 Then check:
@@ -153,7 +153,7 @@ Then check:
 - The plugin was reinstalled after source or manifest changes.
 - A new Codex thread was opened after reinstalling.
 
-| `bun run mcp:smoke` result | Next step |
+| `npm run mcp:smoke` result | Next step |
 | --- | --- |
 | Passes and lists 6 tools | Reinstall or refresh the plugin, then open a new Codex thread. |
 | `MEMOS_PAT is required` | Fix `.env` or export `MEMOS_PAT` in the process that starts Codex. |
@@ -169,7 +169,7 @@ Normal mode requires `MEMOS_PAT`. Missing tokens fail fast.
 For tests only:
 
 ```bash
-MEMOS_EVOLVE_FORCE_LOCAL=1 bun run validate
+MEMOS_EVOLVE_FORCE_LOCAL=1 npm run validate
 ```
 
 Local mode writes to `.data/local-memos.json`. Those records do not appear in the Memos web UI.

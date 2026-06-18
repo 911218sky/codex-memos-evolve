@@ -1,18 +1,19 @@
 {
   "name": "codex-memos-evolve",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "author": "911218sky",
-  "packageManager": "bun@1.3.14",
+  "license": "AGPL-3.0-only",
   "description": "Codex plugin MCP server that evolves usememos/memos notes into policies and skills.",
   "scripts": {
-    "start": "node --no-warnings --experimental-strip-types ./src/mcp-server.ts",
+    "build": "tsc",
+    "start": "node ./dist/src/mcp-server.js",
     "typecheck": "tsc --noEmit",
-    "smoke": "bun ./tests/smoke.ts",
-    "mcp:smoke": "bun ./tests/mcp-smoke.ts",
-    "score": "bun ./scripts/score-project.ts",
-    "validate": "bun run typecheck && bun run smoke && bun run mcp:smoke && bun run score"
+    "smoke": "npm run build && node ./dist/tests/smoke.js",
+    "mcp:smoke": "npm run build && node ./dist/tests/mcp-smoke.js",
+    "score": "npm run build && node ./dist/scripts/score-project.js",
+    "validate": "npm run typecheck && npm run smoke && npm run mcp:smoke && npm run score"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.2",

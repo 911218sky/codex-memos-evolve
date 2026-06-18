@@ -50,7 +50,7 @@ If a subagent says `memos_evolve_recall` is not exposed, the plugin instructions
 After changing the plugin:
 
 ```bash
-bun run validate
+npm run validate
 python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
 python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/update_plugin_cachebuster.py" "$PWD"
 codex plugin add codex-memos-evolve@sky-tools

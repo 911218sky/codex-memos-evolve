@@ -137,13 +137,13 @@ Keep one durable idea per memo. Mark old guidance as `#status/superseded` or `#s
 When changing this plugin, run from the repository root:
 
 ```bash
-bun run validate
+npm run validate
 ```
 
 For local tests without a real Memos token:
 
 ```bash
-MEMOS_EVOLVE_FORCE_LOCAL=1 bun run validate
+MEMOS_EVOLVE_FORCE_LOCAL=1 npm run validate
 ```
 
 Normal storage requires `MEMOS_PAT`. Local mode writes JSON records only; it does not update the Memos web UI.

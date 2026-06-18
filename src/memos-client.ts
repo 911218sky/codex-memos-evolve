@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { MemoRecord, MemosClientOptions, StorageMode } from "./types.ts";
+import type { MemoRecord, MemosClientOptions, StorageMode } from "./types.js";
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 

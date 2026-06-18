@@ -1,7 +1,7 @@
-import { DEFAULT_MAX_RECALL_TOKENS, DEFAULT_PROJECT, STATUS_TAGS, TYPE_TAGS } from "./constants.ts";
-import { feedbackMemo, maintenanceMemo, policyMemo, projectTag, skillMemo, skillTag, slug, traceMemo } from "./format.ts";
-import { MemosClient } from "./memos-client.ts";
-import { compactLines, estimateTokens, truncateByTokens } from "./token.ts";
+import { DEFAULT_MAX_RECALL_TOKENS, DEFAULT_PROJECT, STATUS_TAGS, TYPE_TAGS } from "./constants.js";
+import { feedbackMemo, maintenanceMemo, policyMemo, projectTag, skillMemo, skillTag, slug, traceMemo } from "./format.js";
+import { MemosClient } from "./memos-client.js";
+import { compactLines, estimateTokens, truncateByTokens } from "./token.js";
 import type {
   FeedbackInput,
   MaintainInput,
@@ -12,7 +12,7 @@ import type {
   ReflectInput,
   StatsInput,
   TraceInput
-} from "./types.ts";
+} from "./types.js";
 
 function contentOf(memo: MemoRecord): string {
   return memo.content || memo.snippet || "";

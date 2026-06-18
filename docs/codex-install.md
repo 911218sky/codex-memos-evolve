@@ -7,11 +7,11 @@ Use this guide when Memos and the plugin already validate locally, but Codex sti
 From the plugin root:
 
 ```bash
-bun install
-bun run validate
+npm install
+npm run validate
 ```
 
-Bun is only used for local validation here. The installed Codex MCP server runs with Node from `.mcp.json`.
+The installed Codex MCP server runs with Node from `.mcp.json`.
 
 Validate the manifest:
 
@@ -19,7 +19,7 @@ Validate the manifest:
 python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" "$PWD"
 ```
 
-If `CODEX_HOME` is not set, use the Codex home for the Codex process you are testing. For this workspace, that is usually `/home/sbplab/sky/.tools/codex/config`.
+If `CODEX_HOME` is not set, use the Codex home for the Codex process you are testing, such as `~/.codex` or another runtime-specific config directory.
 
 ## 2. Confirm `.env`
 
@@ -113,7 +113,7 @@ The MCP command is:
 ```json
 {
   "command": "node",
-  "args": ["--no-warnings", "--experimental-strip-types", "./src/mcp-server.ts"]
+  "args": ["./dist/src/mcp-server.js"]
 }
 ```
 
@@ -150,17 +150,17 @@ If your surface does not expose the active tool list, use two checks:
 
 ```bash
 codex mcp list
-bun run mcp:smoke
+npm run mcp:smoke
 ```
 
-`codex mcp list` confirms Codex knows about enabled MCP servers. `bun run mcp:smoke` is a local validation script that starts the same Node MCP entrypoint and confirms it lists 6 tools.
+`codex mcp list` confirms Codex knows about enabled MCP servers. `npm run mcp:smoke` is a local validation script that starts the same Node MCP entrypoint and confirms it lists 6 tools.
 
 ## 6. If MCP Startup Is Incomplete
 
 Run from the plugin root:
 
 ```bash
-bun run mcp:smoke
+npm run mcp:smoke
 ```
 
 Then check:
@@ -171,7 +171,7 @@ Then check:
 - The plugin was refreshed after edits.
 - The Codex thread was restarted.
 
-| `bun run mcp:smoke` result | Meaning | Next step |
+| `npm run mcp:smoke` result | Meaning | Next step |
 | --- | --- | --- |
 | Passes and lists 6 tools | The plugin MCP server works locally. | Reinstall or refresh the plugin, then open a new Codex thread. |
 | `MEMOS_PAT is required` | The token is missing from `.env` or the Codex process environment. | Fix `.env` or export `MEMOS_PAT`. |
