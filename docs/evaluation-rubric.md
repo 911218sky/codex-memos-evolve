@@ -9,11 +9,11 @@ The rubric checks one question: does the plugin make repeated Codex work easier 
 | Area | Points | Passing evidence |
 | --- | ---: | --- |
 | Memos integration | 15 | Reads and writes through `MEMOS_BASE_URL` and `MEMOS_PAT`. |
-| Trace quality | 15 | Stores task, outcome, observations, corrections, value, project, and tags. |
+| AI-first memo shape | 15 | Stores active work, decisions, and traces in compact differentiated formats. |
 | Policy promotion | 20 | Repeated traces create policy memos with support counts. |
 | Skill creation | 20 | Stable lessons create compact skill memos with workflow and version. |
 | Token saving | 15 | Recall is budgeted and smaller than raw matching memory. |
-| Feedback and maintenance | 10 | Useful, wrong, stale, broad, noisy, short-lived, or low-value memory can be rated or expired. |
+| Maintenance | 10 | Short-lived or low-value memory can be expired, and setup/cleanup remain simple. |
 | Safety | 5 | Secrets are rejected or suppressed; user instructions outrank memory. |
 
 ## Passing Bar
@@ -37,7 +37,7 @@ The validation should show:
 - smoke tests pass
 - MCP smoke tests pass
 - score script passes
-- all six MCP tools are available
+- exactly three MCP tools are available
 
 ## Token-Saving Checks
 

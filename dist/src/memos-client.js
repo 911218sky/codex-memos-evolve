@@ -130,6 +130,32 @@ export class MemosClient {
         }
         return res.json();
     }
+    async listShortcuts(username) {
+        if (this.mode === "local-json")
+            return this.#readLocalShortcuts();
+        const url = new URL(`${this.baseUrl}/api/v1/users/${encodeURIComponent(username)}/shortcuts`);
+        const res = await fetch(url, { headers: this.#headers(false) });
+        if (!res.ok) {
+            const message = await res.text();
+            throw new Error(`Memos list shortcuts failed ${res.status}: ${message}`);
+        }
+        const body = await res.json();
+        return body.shortcuts || [];
+    }
+    async createShortcut(username, shortcut) {
+        if (this.mode === "local-json")
+            return this.#createLocalShortcut(shortcut);
+        const res = await fetch(`${this.baseUrl}/api/v1/users/${encodeURIComponent(username)}/shortcuts`, {
+            method: "POST",
+            headers: this.#headers(),
+            body: JSON.stringify({ shortcut })
+        });
+        if (!res.ok) {
+            const message = await res.text();
+            throw new Error(`Memos create shortcut failed ${res.status}: ${message}`);
+        }
+        return res.json();
+    }
     #headers(hasBody = true) {
         const headers = {
             Authorization: `Bearer ${this.token}`
@@ -142,6 +168,20 @@ export class MemosClient {
         if (!fs.existsSync(this.localFile))
             return [];
         return JSON.parse(fs.readFileSync(this.localFile, "utf8"));
+    }
+    #shortcutFile() {
+        return this.localFile.replace(/\.json$/, ".shortcuts.json");
+    }
+    #readLocalShortcuts() {
+        const file = this.#shortcutFile();
+        if (!fs.existsSync(file))
+            return [];
+        return JSON.parse(fs.readFileSync(file, "utf8"));
+    }
+    #writeLocalShortcuts(items) {
+        const file = this.#shortcutFile();
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, `${JSON.stringify(items, null, 2)}\n`);
     }
     #writeLocal(items) {
         fs.mkdirSync(path.dirname(this.localFile), { recursive: true });
@@ -190,5 +230,19 @@ export class MemosClient {
             ? haystack.filter((memo) => needles.every((term) => String(memo.content || "").toLowerCase().includes(term)))
             : haystack;
         return filtered.slice(0, pageSize).map((memo) => ({ ...memo, id: memoIdFromName(memo.name) }));
+    }
+    #createLocalShortcut(shortcut) {
+        const items = this.#readLocalShortcuts();
+        const existing = items.find((item) => item.title === shortcut.title);
+        if (existing)
+            return existing;
+        const created = {
+            name: `users/local/shortcuts/${memoIdFromName(`memos/${items.length + 1}`)}`,
+            title: shortcut.title,
+            filter: shortcut.filter
+        };
+        items.push(created);
+        this.#writeLocalShortcuts(items);
+        return created;
     }
 }

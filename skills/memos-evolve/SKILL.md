@@ -8,7 +8,7 @@ description: Proactively use the codex-memos-evolve MCP memory tools for non-tri
 Use the `codex-memos-evolve` MCP tools as a small memory loop:
 
 ```text
-recall -> work -> record trace -> reflect/maintain -> reuse
+recall -> write -> maintain -> reuse
 ```
 
 ## Default Behavior
@@ -50,40 +50,20 @@ When delegating to subagents, include a short instruction in the delegated promp
 
 ## After Useful Work
 
-Record a trace when the task produced a reusable lesson:
+Write memory when the task produced a reusable lesson or active project state:
 
 ```text
-memos_evolve_record_trace
+memos_evolve_write
 ```
 
-Store short, grounded facts:
+Use:
 
-- task
-- outcome
-- observations
-- corrections
-- value
-- topic tags
+- `recordType: "work"` for active goals, plans, and next steps
+- `recordType: "decision"` for durable choices and why
+- `recordType: "trace"` for grounded evidence
+- `recordType: "feedback"` for useful, wrong, stale, broad, or noisy memory
 - `memory: "short"` and `ttlDays` for temporary task state
 - `memory: "long"` for durable lessons
-
-Then run reflection when two or more related traces exist:
-
-```text
-memos_evolve_reflect
-```
-
-Use feedback when a memory was useful, wrong, stale, broad, or noisy:
-
-```text
-memos_evolve_feedback
-```
-
-Use stats after cleanup or validation:
-
-```text
-memos_evolve_stats
-```
 
 Use maintenance when memory is growing, temporary notes are no longer useful, or a task asks for memory hygiene:
 
@@ -91,7 +71,9 @@ Use maintenance when memory is growing, temporary notes are no longer useful, or
 memos_evolve_maintain
 ```
 
-Start with `apply: false` to preview candidates. Use `apply: true` when the proposed expired or low-value traces are safe to mark `#status/expired`.
+Use `action: "setup"` once per project to create Memos shortcuts for active work, decisions, and policies.
+
+Start cleanup with `apply: false` to preview candidates. Use `apply: true` when the proposed expired or low-value traces are safe to mark `#status/expired`.
 
 ## What To Store
 
@@ -116,6 +98,8 @@ Use clear tags:
 ```text
 #codex-memos-evolve
 #project/<project-name>
+#type/work
+#type/decision
 #type/trace
 #type/policy
 #type/skill

@@ -36,6 +36,8 @@ const evolver = fs.readFileSync(path.join(root, "src/evolver.ts"), "utf8");
 checks.push({ name: "trace-to-policy", pass: evolver.includes("recordTrace") && evolver.includes("policyMemo"), weight: 2 });
 checks.push({ name: "policy-to-skill", pass: evolver.includes("skillMemo") && evolver.includes("support"), weight: 2 });
 checks.push({ name: "token-aware-recall", pass: evolver.includes("maxTokens") && evolver.includes("estimated_tokens_saved"), weight: 2 });
+checks.push({ name: "ai-first-recall", pass: evolver.includes("## Active Work") && evolver.includes("## Decisions"), weight: 2 });
+checks.push({ name: "single-write-surface", pass: fs.readFileSync(path.join(root, "src/mcp-server.ts"), "utf8").includes("memos_evolve_write"), weight: 2 });
 checks.push({ name: "usememos-api-client", pass: fs.readFileSync(path.join(root, "src/memos-client.ts"), "utf8").includes("/api/v1/memos"), weight: 2 });
 checks.push({ name: "secret-safety", pass: fs.readFileSync(path.join(root, "skills/memos-evolve/SKILL.md"), "utf8").includes("Do not store secrets"), weight: 1 });
 checks.push({ name: "stale-memory-suppression", pass: evolver.includes("STATUS_TAGS.superseded") && evolver.includes("isActive"), weight: 2 });
@@ -66,6 +68,14 @@ checks.push({
     agentsInstructions.includes("memos_evolve_recall") &&
     agentsInstructions.includes("Subagents must also") &&
     proactiveUse.includes("Current Runtime Boundary"),
+  weight: 2
+});
+checks.push({
+  name: "three-tool-surface",
+  pass:
+    fs.readFileSync(path.join(root, "tests/mcp-smoke.ts"), "utf8").includes("memos_evolve_write") &&
+    !fs.readFileSync(path.join(root, "README.md"), "utf8").includes("memos_evolve_record_trace") &&
+    !fs.readFileSync(path.join(root, "README.md"), "utf8").includes("memos_evolve_stats"),
   weight: 2
 });
 

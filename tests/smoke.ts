@@ -56,6 +56,32 @@ const engine = new EvolveEngine(client);
 
 await engine.recordTrace({
   project: "smoke",
+  recordType: "work",
+  summary: "Stabilize Codex memory redesign",
+  goal: "Ship a Memos-native AI memory model",
+  plan: ["Define work memo format", "Update recall priority", "Bootstrap shortcuts"],
+  next: "Implement recall ranking",
+  state: "in_progress",
+  pinned: true,
+  outcome: "Design is active",
+  observations: ["Use task lists instead of inventing a second planning schema"],
+  tags: ["memory", "planning"]
+});
+
+await engine.recordTrace({
+  project: "smoke",
+  recordType: "decision",
+  summary: "Prefer Memos-native planning features",
+  why: "Pinned memos, task lists, archive, and shortcuts already exist upstream",
+  consequences: ["Plugin should not become a full PM system", "Recall should prioritize higher-level memos"],
+  state: "done",
+  outcome: "Decision recorded",
+  observations: ["Traces become supporting evidence instead of the default recall surface"],
+  tags: ["memory", "decision"]
+});
+
+await engine.recordTrace({
+  project: "smoke",
   task: "Write a Codex plugin README",
   outcome: "README was useful",
   observations: ["README should include install env vars"],
@@ -206,9 +232,11 @@ await engine.feedback({
 });
 
 const recall = await engine.recall({ project: "smoke", task: "Create plugin docs", maxTokens: 900 });
-assert.match(recall.recall, /Active Skills|Policies/);
+assert.match(recall.recall, /Active Work|Decisions|Policies/);
 assert.equal(recall.recall_tokens_estimate <= 900, true);
 assert.equal(recall.estimated_tokens_saved / recall.raw_tokens_estimate >= 0.5, true);
+assert.equal(recall.recall.includes("Stabilize Codex memory redesign"), true);
+assert.equal(recall.recall.includes("Prefer Memos-native planning features"), true);
 assert.equal(recall.recall.includes("Always dump every raw memo"), false);
 assert.equal(recall.recall.includes("different project"), false);
 assert.equal(recall.recall.includes("Prefix project trace"), false);
@@ -255,6 +283,15 @@ assert.equal(temporaryRecall.recall.includes("Temporary branch note"), true);
 const trivial = await engine.recall({ project: "smoke", task: "what time is it?", maxTokens: 900 });
 assert.equal(trivial.skipped, true);
 
+const setup = await engine.maintain({
+  project: "smoke",
+  action: "setup",
+  username: "sky",
+  apply: false
+});
+assert.equal(setup.shortcuts?.created.length >= 1 || setup.shortcuts?.existing.length >= 1, true);
+assert.equal((setup.shortcuts?.total || 0) >= 3, true);
+
 await assert.rejects(() => engine.recordTrace({
   project: "smoke",
   task: "Store a token",
@@ -267,6 +304,10 @@ await assert.rejects(() => engine.recordTrace({
 
 const stats = await engine.stats({ project: "smoke" });
 assert.equal(stats.counts.trace, 6);
+assert.equal(stats.counts.work, 1);
+assert.equal(stats.counts.decision, 1);
+assert.equal(stats.counts.state_in_progress, 1);
+assert.equal(stats.counts.state_done >= 1, true);
 assert.equal(stats.counts.skill >= 1, true);
 assert.equal(stats.counts.maintenance, 1);
 assert.equal(stats.counts.expired >= 3, true);

@@ -4,7 +4,7 @@ Use maintenance when Memos has accumulated temporary task traces, old failed att
 
 ## Short Memory
 
-When recording a trace, use:
+When writing a temporary trace, use:
 
 ```json
 {
@@ -49,6 +49,12 @@ Apply when the preview looks right:
 
 Apply mode marks expired or old low-value traces with `#status/expired`, runs reflection, and writes a `#type/maintenance` summary. Recall excludes expired records.
 
+`action: "setup"` creates Memos shortcuts for:
+
+- Active Work
+- Decisions
+- Policies
+
 If a short trace has `#expires/<yyyy-mm-dd>`, maintenance honors that per-record date. `shortMemoryTtlDays` is a fallback for older short traces that have `#memory/short` but no `#expires` tag.
 
 `expiring_tokens_estimate` reports the size of traces that maintenance would remove from active recall. In dry-run mode, `estimated_tokens_saved` is omitted because apply mode can also create policies, skills, and a maintenance summary. In apply mode, `estimated_tokens_saved` is the net active-memory estimate after those writes, so it can be `0` when maintenance also creates useful compact memories.
@@ -56,8 +62,9 @@ If a short trace has `#expires/<yyyy-mm-dd>`, maintenance honors that per-record
 ## Suggested Cadence
 
 - Per task: record durable lessons as long memory and temporary state as short memory.
+- Per task: use `recordType: "work"` for live execution state and `recordType: "decision"` for durable choices.
 - Daily: preview maintenance with `apply: false`.
 - Weekly or after large projects: apply maintenance after checking candidates.
-- Before handoff: run `memos_evolve_stats` to confirm token savings and inactive memory counts.
+- Before handoff: inspect the maintenance result for token savings and promotion counts.
 
 The plugin does not currently install an automatic Codex runtime hook. Scheduling should be done by the user, Codex project instructions, or an external job that calls the MCP tool.

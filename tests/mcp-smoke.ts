@@ -48,7 +48,7 @@ const discoveryTransport = new StdioClientTransport({
 const discoveryClient = new Client({ name: "codex-memos-evolve-discovery-test", version: "0.1.1" });
 await discoveryClient.connect(discoveryTransport);
 const discoveryTools = await discoveryClient.listTools();
-assert.equal(discoveryTools.tools.length, 6);
+assert.equal(discoveryTools.tools.length, 3);
 await discoveryClient.close();
 
 const transport = new StdioClientTransport({
@@ -74,18 +74,22 @@ function firstText(result: unknown): string {
 const tools = await client.listTools();
 const names = tools.tools.map((tool) => tool.name);
 assert.deepEqual(names.sort(), [
-  "memos_evolve_feedback",
   "memos_evolve_maintain",
   "memos_evolve_recall",
-  "memos_evolve_record_trace",
-  "memos_evolve_reflect",
-  "memos_evolve_stats"
+  "memos_evolve_write"
 ]);
 
 await client.callTool({
-  name: "memos_evolve_record_trace",
+  name: "memos_evolve_write",
   arguments: {
     project: "mcp-smoke",
+    recordType: "work",
+    summary: "Test MCP work memo",
+    goal: "Confirm generic writer can create work records",
+    plan: ["Create a work memo", "Recall it"],
+    next: "Run recall",
+    state: "in_progress",
+    pinned: true,
     task: "Test MCP tool invocation",
     outcome: "Tool call worked",
     observations: ["MCP client can call server"],
@@ -106,6 +110,17 @@ const recall = await client.callTool({
 
 const text = firstText(recall);
 assert.match(text, /Memos Evolve Recall/);
+assert.match(text, /Active Work/);
+
+const setup = await client.callTool({
+  name: "memos_evolve_maintain",
+  arguments: {
+    project: "mcp-smoke",
+    action: "setup",
+    username: "sky"
+  }
+});
+assert.match(firstText(setup), /Active Work|shortcuts/i);
 
 const trivial = await client.callTool({
   name: "memos_evolve_recall",

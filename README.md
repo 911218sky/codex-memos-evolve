@@ -1,8 +1,8 @@
 # Codex Memos Evolve
 
-Codex Memos Evolve is a local Codex plugin that gives Codex a small long-term memory loop.
+Codex Memos Evolve is a local Codex plugin that gives Codex a small long-term memory loop built for AI use.
 
-It stores useful task traces in [usememos/memos](https://github.com/usememos/memos), then turns repeated lessons into compact policies and skills that Codex can recall later.
+It stores compact Memos-native records in [usememos/memos](https://github.com/usememos/memos), prioritizes active work and decisions during recall, and turns repeated trace evidence into compact policies and skills.
 
 ![Codex Memos Evolve architecture](assets/codex-memos-evolve-architecture.png)
 
@@ -10,11 +10,10 @@ It stores useful task traces in [usememos/memos](https://github.com/usememos/mem
 
 | Step | Result |
 | --- | --- |
-| Recall | Codex asks for relevant memory before reusable work. |
-| Record | Completed work is saved as a short trace in Memos. |
-| Reflect | Repeated traces become policies and skill memos. |
-| Maintain | Short-lived or low-value traces are expired and summarized. |
-| Reuse | Future tasks get compact guidance instead of raw history. |
+| Recall | Codex gets compact active memory before non-trivial work. |
+| Write | Codex saves work, decisions, traces, or feedback in one shape. |
+| Maintain | Short-lived or low-value traces are expired, repeated evidence is promoted, and useful shortcuts are bootstrapped. |
+| Reuse | Future tasks get active work, decisions, policies, and only a little trace evidence. |
 
 This is a working prototype. It does not implement a full memory operating system and it does not yet have automatic Codex lifecycle hooks.
 
@@ -129,11 +128,8 @@ Start a new Codex thread after reinstalling so MCP tools and skills reload.
 | Tool | Use |
 | --- | --- |
 | `memos_evolve_recall` | Get compact memory for the current task. |
-| `memos_evolve_record_trace` | Save a grounded task trace. |
-| `memos_evolve_reflect` | Promote repeated traces into policies and skills. |
-| `memos_evolve_feedback` | Mark memory as useful, wrong, stale, or noisy. |
-| `memos_evolve_stats` | Show counts and rough token savings. |
-| `memos_evolve_maintain` | Preview or apply cleanup for short-lived, expired, or low-value traces. |
+| `memos_evolve_write` | Save work, decision, trace, or feedback records with one tool. |
+| `memos_evolve_maintain` | Setup shortcuts, preview/apply cleanup, and promote repeated evidence. |
 
 You normally do not call these directly. The `memos-evolve` skill tells Codex when to use them.
 
@@ -155,7 +151,7 @@ Then check:
 
 | `npm run mcp:smoke` result | Next step |
 | --- | --- |
-| Passes and lists 6 tools | Reinstall or refresh the plugin, then open a new Codex thread. |
+| Passes and lists 3 tools | Reinstall or refresh the plugin, then open a new Codex thread. |
 | `MEMOS_PAT is required` | Fix `.env` or export `MEMOS_PAT` in the process that starts Codex. |
 | Connection refused | Start Memos or fix `MEMOS_BASE_URL`. |
 | Tools still absent in Codex | Reinstall the plugin and confirm Codex is using the expected plugin root. |
@@ -176,7 +172,7 @@ Local mode writes to `.data/local-memos.json`. Those records do not appear in th
 
 ## Short Memory And Maintenance
 
-`memos_evolve_record_trace` accepts `memory: "long"` for durable lessons, `memory: "short"` for temporary task state, and `ttlDays` for records that should expire after a small number of days.
+`memos_evolve_write` accepts `recordType: "trace"` with `memory: "long"` for durable lessons, `memory: "short"` for temporary task state, and `ttlDays` for records that should expire after a small number of days.
 
 Run maintenance manually or from a scheduler:
 
@@ -207,7 +203,7 @@ assets/                     Markdown images
 docs/                       Install, architecture, and review notes
 skills/memos-evolve/        Codex workflow instructions
 src/mcp-server.ts           MCP tool definitions
-src/evolver.ts              Recall, reflection, feedback, stats, and maintenance
+src/evolver.ts              Recall, write, promotion, stats, and maintenance logic
 src/memos-client.ts         Memos API client and local test mode
 tests/                      Local smoke and MCP smoke tests
 ```

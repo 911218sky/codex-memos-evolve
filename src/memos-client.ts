@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { MemoRecord, MemosClientOptions, StorageMode } from "./types.js";
+import type { MemoRecord, MemosClientOptions, ShortcutRecord, StorageMode } from "./types.js";
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -137,6 +137,32 @@ export class MemosClient {
     return res.json() as Promise<MemoRecord>;
   }
 
+  async listShortcuts(username: string): Promise<ShortcutRecord[]> {
+    if (this.mode === "local-json") return this.#readLocalShortcuts();
+    const url = new URL(`${this.baseUrl}/api/v1/users/${encodeURIComponent(username)}/shortcuts`);
+    const res = await fetch(url, { headers: this.#headers(false) });
+    if (!res.ok) {
+      const message = await res.text();
+      throw new Error(`Memos list shortcuts failed ${res.status}: ${message}`);
+    }
+    const body = await res.json() as { shortcuts?: ShortcutRecord[] };
+    return body.shortcuts || [];
+  }
+
+  async createShortcut(username: string, shortcut: ShortcutRecord): Promise<ShortcutRecord> {
+    if (this.mode === "local-json") return this.#createLocalShortcut(shortcut);
+    const res = await fetch(`${this.baseUrl}/api/v1/users/${encodeURIComponent(username)}/shortcuts`, {
+      method: "POST",
+      headers: this.#headers(),
+      body: JSON.stringify({ shortcut })
+    });
+    if (!res.ok) {
+      const message = await res.text();
+      throw new Error(`Memos create shortcut failed ${res.status}: ${message}`);
+    }
+    return res.json() as Promise<ShortcutRecord>;
+  }
+
   #headers(hasBody = true): Record<string, string> {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.token}`
@@ -148,6 +174,22 @@ export class MemosClient {
   #readLocal(): MemoRecord[] {
     if (!fs.existsSync(this.localFile)) return [];
     return JSON.parse(fs.readFileSync(this.localFile, "utf8")) as MemoRecord[];
+  }
+
+  #shortcutFile(): string {
+    return this.localFile.replace(/\.json$/, ".shortcuts.json");
+  }
+
+  #readLocalShortcuts(): ShortcutRecord[] {
+    const file = this.#shortcutFile();
+    if (!fs.existsSync(file)) return [];
+    return JSON.parse(fs.readFileSync(file, "utf8")) as ShortcutRecord[];
+  }
+
+  #writeLocalShortcuts(items: ShortcutRecord[]): void {
+    const file = this.#shortcutFile();
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, `${JSON.stringify(items, null, 2)}\n`);
   }
 
   #writeLocal(items: MemoRecord[]): void {
@@ -198,5 +240,19 @@ export class MemosClient {
       ? haystack.filter((memo) => needles.every((term) => String(memo.content || "").toLowerCase().includes(term)))
       : haystack;
     return filtered.slice(0, pageSize).map((memo) => ({ ...memo, id: memoIdFromName(memo.name) }));
+  }
+
+  #createLocalShortcut(shortcut: ShortcutRecord): ShortcutRecord {
+    const items = this.#readLocalShortcuts();
+    const existing = items.find((item) => item.title === shortcut.title);
+    if (existing) return existing;
+    const created = {
+      name: `users/local/shortcuts/${memoIdFromName(`memos/${items.length + 1}`)}`,
+      title: shortcut.title,
+      filter: shortcut.filter
+    };
+    items.push(created);
+    this.#writeLocalShortcuts(items);
+    return created;
   }
 }

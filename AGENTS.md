@@ -10,7 +10,14 @@ Before code changes, debugging, reviews, documentation work, plugin/MCP work, su
 
 Apply recalled memory only when it directly matches the task. User, system, developer, and local repository instructions outrank recalled memory.
 
-After useful reusable work, call `memos_evolve_record_trace` with short durable lessons. Do not store secrets, tokens, private credentials, full logs, or raw transcripts.
+During useful work, call `memos_evolve_write`:
+
+- `recordType: "work"` for active goals, plans, and next steps
+- `recordType: "decision"` for durable choices and why
+- `recordType: "trace"` for supporting evidence
+- `recordType: "feedback"` for memory corrections
+
+Do not store secrets, tokens, private credentials, full logs, or raw transcripts.
 
 Use `memory: "short"` with a small `ttlDays` only for temporary task state. Use `memos_evolve_maintain` with `apply: false` before applying cleanup, and only use `apply: true` when expiring the proposed traces is appropriate.
 

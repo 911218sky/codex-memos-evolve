@@ -9,22 +9,22 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Memos Evolve",
-    "shortDescription": "Turn Codex task traces into reusable policies and skills stored in Memos.",
-    "longDescription": "Codex Memos Evolve gives Codex a Memos-backed memory loop inspired by Reflect2Evolve: recall compact guidance before work, record task traces, promote repeated lessons into policies, and crystallize stable policies into reusable skills.",
+    "shortDescription": "Give Codex simpler AI-first memory in Memos: active work, decisions, traces, and compact recall.",
+    "longDescription": "Codex Memos Evolve gives Codex a Memos-native memory loop built for AI use: recall active work and decisions before non-trivial tasks, write compact work or decision records during execution, keep traces as supporting evidence, and maintain the memory store with minimal tool surface.",
     "developerName": "911218sky",
     "category": "Productivity",
     "capabilities": [
       "Memos-backed long-term memory",
+      "AI-first active work recall",
+      "Decision memory",
       "Trace to policy promotion",
-      "Skill crystallization",
       "Token-aware recall",
       "Short-memory maintenance"
     ],
     "defaultPrompt": [
       "Before non-trivial Codex work, call memos_evolve_recall for relevant memory.",
-      "After reusable work, call memos_evolve_record_trace with durable lessons.",
-      "Use memos_evolve_maintain to preview or apply cleanup when memory is growing.",
-      "Use memos_evolve_stats to verify the memory plugin is connected."
+      "Use memos_evolve_write with recordType work, decision, trace, or feedback instead of separate memory tools.",
+      "Use memos_evolve_maintain with action setup to create shortcuts and with cleanup to preview or apply cleanup when memory is growing."
     ]
   },
   "mcpServers": "./.mcp.json"

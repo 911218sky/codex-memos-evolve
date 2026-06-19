@@ -132,6 +132,8 @@ Useful filters:
 
 ```text
 #project/<project-name>
+#type/work
+#type/decision
 #type/trace
 #type/policy
 #type/skill

@@ -13,9 +13,18 @@ server.tool("memos_evolve_recall", "Call at the start of non-trivial Codex work 
     project: z.string().default("default").describe("Project or repository name, for example codex-memos-evolve."),
     maxTokens: z.number().int().min(200).max(4000).default(1400).describe("Approximate token budget for recall output.")
 }, async (input) => withEngine((engine) => engine.recall(input)));
-server.tool("memos_evolve_record_trace", "Store a grounded task trace in usememos/memos for later promotion into policies and skills.", {
+server.tool("memos_evolve_write", "Write a compact AI-first memory record to Memos. Use work for active plans, decision for durable choices, trace for supporting evidence, and feedback for corrections.", {
     project: z.string().default("default"),
-    task: z.string(),
+    recordType: z.enum(["trace", "work", "decision", "feedback"]).default("trace"),
+    state: z.enum(["planned", "in_progress", "blocked", "done", "cancelled"]).optional(),
+    summary: z.string().optional(),
+    goal: z.string().optional(),
+    plan: z.array(z.string()).default([]),
+    next: z.string().optional(),
+    why: z.string().optional(),
+    consequences: z.array(z.string()).default([]),
+    pinned: z.boolean().default(false),
+    task: z.string().optional(),
     outcome: z.string().default(""),
     observations: z.array(z.string()).default([]),
     corrections: z.array(z.string()).default([]),
@@ -23,22 +32,11 @@ server.tool("memos_evolve_record_trace", "Store a grounded task trace in usememo
     tags: z.array(z.string()).default([]),
     memory: z.enum(["short", "long"]).default("long").describe("Use short for temporary task-only facts; they can expire during maintenance."),
     ttlDays: z.number().int().min(1).max(365).optional().describe("Optional time-to-live in days for short or temporary memories.")
-}, async (input) => withEngine((engine) => engine.recordTrace(input)));
-server.tool("memos_evolve_reflect", "Promote repeated traces into compact policy and skill memos.", {
+}, async (input) => withEngine((engine) => engine.write(input)));
+server.tool("memos_evolve_maintain", "Maintain AI memory with one tool: setup project shortcuts, preview/apply cleanup, expire low-value traces, and fold repeated evidence into compact policies and skills.", {
     project: z.string().default("default"),
-    minSupport: z.number().int().min(2).max(20).default(2)
-}, async (input) => withEngine((engine) => engine.reflect(input)));
-server.tool("memos_evolve_feedback", "Record human or agent feedback about an evolved memory, policy, or skill.", {
-    project: z.string().default("default"),
-    target: z.string().describe("Memo name, skill slug, or policy title."),
-    rating: z.number().int().min(-5).max(5),
-    comment: z.string().default("")
-}, async (input) => withEngine((engine) => engine.feedback(input)));
-server.tool("memos_evolve_stats", "Summarize trace/policy/skill counts and rough token compression.", {
-    project: z.string().default("default")
-}, async (input) => withEngine((engine) => engine.stats(input)));
-server.tool("memos_evolve_maintain", "Preview or apply memory maintenance: expire short-lived or low-value traces, promote repeated traces, and report estimated token savings.", {
-    project: z.string().default("default"),
+    action: z.enum(["cleanup", "setup"]).default("cleanup"),
+    username: z.string().default("sky"),
     apply: z.boolean().default(false).describe("False previews candidates only. True marks expired candidates and writes a maintenance summary."),
     maxTraceAgeDays: z.number().int().min(1).max(3650).default(30),
     minTraceValue: z.number().min(-10).max(10).default(-3),
