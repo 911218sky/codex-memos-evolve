@@ -35,6 +35,8 @@ for (const rel of required) {
 const evolver = fs.readFileSync(path.join(root, "src/evolver.ts"), "utf8");
 checks.push({ name: "trace-to-policy", pass: evolver.includes("recordTrace") && evolver.includes("policyMemo"), weight: 2 });
 checks.push({ name: "policy-to-skill", pass: evolver.includes("skillMemo") && evolver.includes("support"), weight: 2 });
+checks.push({ name: "memory-search-surface", pass: evolver.includes("async search(") && fs.readFileSync(path.join(root, "src/mcp-server.ts"), "utf8").includes("memos_evolve_search"), weight: 2 });
+checks.push({ name: "promotion-evidence-links", pass: fs.readFileSync(path.join(root, "src/format.ts"), "utf8").includes("## Source Memos") && evolver.includes("memoRef"), weight: 2 });
 checks.push({ name: "token-aware-recall", pass: evolver.includes("maxTokens") && evolver.includes("estimated_tokens_saved"), weight: 2 });
 checks.push({ name: "ai-first-recall", pass: evolver.includes("## Active Work") && evolver.includes("## Decisions"), weight: 2 });
 checks.push({ name: "single-write-surface", pass: fs.readFileSync(path.join(root, "src/mcp-server.ts"), "utf8").includes("memos_evolve_write"), weight: 2 });
@@ -71,9 +73,10 @@ checks.push({
   weight: 2
 });
 checks.push({
-  name: "three-tool-surface",
+  name: "four-tool-surface",
   pass:
     fs.readFileSync(path.join(root, "tests/mcp-smoke.ts"), "utf8").includes("memos_evolve_write") &&
+    fs.readFileSync(path.join(root, "tests/mcp-smoke.ts"), "utf8").includes("memos_evolve_search") &&
     !fs.readFileSync(path.join(root, "README.md"), "utf8").includes("memos_evolve_record_trace") &&
     !fs.readFileSync(path.join(root, "README.md"), "utf8").includes("memos_evolve_stats"),
   weight: 2

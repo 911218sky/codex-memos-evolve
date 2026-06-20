@@ -1,6 +1,6 @@
 {
   "name": "codex-memos-evolve",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "author": "911218sky",
@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "smoke": "npm run build && node ./dist/tests/smoke.js",
     "mcp:smoke": "npm run build && node ./dist/tests/mcp-smoke.js",
+    "plugin:refresh": "bash ./scripts/refresh-plugin.sh",
     "score": "npm run build && node ./dist/scripts/score-project.js",
     "validate": "npm run typecheck && npm run smoke && npm run mcp:smoke && npm run score"
   },

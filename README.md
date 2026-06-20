@@ -2,7 +2,7 @@
 
 Codex Memos Evolve is a local Codex plugin that gives Codex a small long-term memory loop built for AI use.
 
-It stores compact Memos-native records in [usememos/memos](https://github.com/usememos/memos), prioritizes active work and decisions during recall, and turns repeated trace evidence into compact policies and skills.
+It stores compact Memos-native records in [usememos/memos](https://github.com/usememos/memos), prioritizes active work and decisions during recall, adds lightweight project search, and turns repeated trace evidence into compact policies and skills with explicit source links.
 
 ![Codex Memos Evolve architecture](assets/codex-memos-evolve-architecture.png)
 
@@ -69,11 +69,25 @@ npm run validate
 4. Install or refresh the Codex plugin:
 
 ```bash
+npm run plugin:refresh
+```
+
+This is the shortest path for the current local workflow. It builds the repo, syncs this clone directly into the installed `codex-memos-evolve@sky-tools` cache, installs cache dependencies, and runs the installed MCP smoke test.
+
+For later updates, use:
+
+```bash
+git pull
+npm run plugin:refresh
+```
+
+If you only need the raw Codex command, the underlying install step is:
+
+```bash
 codex plugin add codex-memos-evolve@sky-tools
 ```
 
-This assumes your Codex setup exposes this plugin through the local or personal `sky-tools` marketplace.
-The installed Codex MCP server runs with Node from `.mcp.json`.
+This assumes your Codex setup already has `codex-memos-evolve@sky-tools` enabled once. After that, the installed Codex MCP server runs from the cache copy with Node from `.mcp.json`, and repo updates can use `git pull` plus `npm run plugin:refresh`.
 
 For another local marketplace:
 
@@ -129,6 +143,7 @@ Start a new Codex thread after reinstalling so MCP tools and skills reload.
 | --- | --- |
 | `memos_evolve_recall` | Get compact memory for the current task. |
 | `memos_evolve_write` | Save work, decision, trace, or feedback records with one tool. |
+| `memos_evolve_search` | Search memory by query, type, topic, status, and state with compact or full output. |
 | `memos_evolve_maintain` | Setup shortcuts, preview/apply cleanup, and promote repeated evidence. |
 
 You normally do not call these directly. The `memos-evolve` skill tells Codex when to use them.
@@ -151,7 +166,7 @@ Then check:
 
 | `npm run mcp:smoke` result | Next step |
 | --- | --- |
-| Passes and lists 3 tools | Reinstall or refresh the plugin, then open a new Codex thread. |
+| Passes and lists 4 tools | Reinstall or refresh the plugin, then open a new Codex thread. |
 | `MEMOS_PAT is required` | Fix `.env` or export `MEMOS_PAT` in the process that starts Codex. |
 | Connection refused | Start Memos or fix `MEMOS_BASE_URL`. |
 | Tools still absent in Codex | Reinstall the plugin and confirm Codex is using the expected plugin root. |
@@ -182,6 +197,21 @@ memos_evolve_maintain({ project: "my-project", apply: true })
 ```
 
 Dry runs report candidates without changing Memos. Applying maintenance marks expired candidates with `#status/expired`, runs reflection, writes a maintenance summary memo, and reports estimated tokens saved. Recall excludes expired records.
+
+## Search
+
+Use `memos_evolve_search` when recall is too compact and you need targeted retrieval.
+
+- `detail: "index"` returns a short result list with type, score, and memo id.
+- `detail: "full"` returns the full memo bodies for the filtered hits.
+- Filters stay lightweight: `project`, `query`, `type`, `topic`, `status`, `state`, `filter`, `limit`.
+- Native `filter` passthrough applies in `memos-api` mode. `local-json` keeps the built-in filters only and does not parse raw CEL.
+- `filter: 'pinned || has_incomplete_tasks'`
+- `filter: 'visibility == "PUBLIC"'`
+- Ranking now prefers exact phrase hits and matches in `Summary`, `Decision`, `Policy`, `Skill`, and `Task` before looser partial matches.
+- For user knowledge, keep existing record types and use tags such as `tags: ["#subject/user", "#kind/preference", "answers"]`.
+
+Reflected policy and skill memos now include `## Evidence` plus `## Source Memos`, so promoted guidance can be traced back to the supporting trace records.
 
 ## Documentation
 

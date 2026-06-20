@@ -98,6 +98,22 @@ If `CODEX_HOME` is not set, it usually means your Codex configuration directory.
 
 ## 6. Manual MCP Check
 
+For the local `sky-tools` workflow, refresh the installed Codex plugin with:
+
+```bash
+npm run plugin:refresh
+```
+
+This runs the local build, syncs this clone directly into the installed `sky-tools` cache copy, installs cache dependencies, and runs the installed cache MCP smoke test.
+It also resolves the nearest parent Codex workspace that already has the plugin cache, so you can run the refresh command directly from the repository clone.
+
+For updates after the first install:
+
+```bash
+git pull
+npm run plugin:refresh
+```
+
 For the MCP path only:
 
 ```bash

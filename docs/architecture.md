@@ -8,7 +8,7 @@ Codex Memos Evolve has three moving parts:
 
 ![Codex Memos Evolve architecture](../assets/codex-memos-evolve-architecture.png)
 
-In the diagram, external MCP tools such as filesystem, search, or git are examples of the wider Codex tool environment. This plugin provides three memory tools: recall, write, and maintain.
+In the diagram, external MCP tools such as filesystem, search, or git are examples of the wider Codex tool environment. This plugin provides four memory tools: recall, write, search, and maintain.
 
 ## Flow
 
@@ -25,7 +25,7 @@ Codex task
 
 | Component | Role |
 | --- | --- |
-| `src/mcp-server.ts` | Defines the three MCP tools and validates inputs. |
+| `src/mcp-server.ts` | Defines the four MCP tools and validates inputs. |
 | `src/evolver.ts` | Handles recall, write, promotion, stats, and maintenance. |
 | `src/memos-client.ts` | Connects to Memos or explicit local JSON test storage. |
 | `skills/memos-evolve/SKILL.md` | Tells Codex when to use the memory loop. |
@@ -50,6 +50,8 @@ Recall priority is:
 3. active decisions
 4. active policies and skills
 5. a small amount of recent trace evidence
+
+Search is the second retrieval path. Recall is for proactive task priming; search is for targeted follow-up retrieval when the compact recall output is not enough.
 
 Example: a policy might say "prefer `rg` for repository search." A skill might describe the full review workflow that uses search, file reads, tests, and a final summary.
 
@@ -118,3 +120,5 @@ The plugin also avoids obvious secret leakage:
 - `MEMOS_PAT` is not stored in docs.
 - Secret-looking traces and feedback are rejected.
 - Secret-looking recall candidates are suppressed.
+
+Reflected policy and skill memos also carry explicit evidence sections and source memo ids so compact guidance remains auditable.

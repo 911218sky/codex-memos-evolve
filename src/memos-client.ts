@@ -18,6 +18,10 @@ function memoIdFromName(name?: string): string {
   return String(name).split("/").pop() || "";
 }
 
+function escapeCelStringLiteral(value: string): string {
+  return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+}
+
 function loadDotEnv(file: string): Record<string, string> {
   if (!fs.existsSync(file)) return {};
   const values: Record<string, string> = {};
@@ -100,19 +104,30 @@ export class MemosClient {
 
   async searchMemos(query: string, pageSize = 50): Promise<MemoRecord[]> {
     if (this.mode === "local-json") return this.#searchLocal(query, pageSize);
+    return this.listMemos({
+      pageSize,
+      filter: query ? `content.contains("${escapeCelStringLiteral(query)}")` : ""
+    });
+  }
+
+  async listMemos({
+    filter = "",
+    orderBy = "",
+    pageSize = 50
+  }: {
+    filter?: string;
+    orderBy?: string;
+    pageSize?: number;
+  } = {}): Promise<MemoRecord[]> {
+    if (this.mode === "local-json") return this.#readLocal().slice(0, pageSize);
     const url = new URL(`${this.baseUrl}/api/v1/memos`);
     url.searchParams.set("pageSize", String(pageSize));
-    if (query) {
-      url.searchParams.set("filter", `content.contains("${String(query).replaceAll('"', '\\"')}")`);
-    }
+    if (filter) url.searchParams.set("filter", filter);
+    if (orderBy) url.searchParams.set("orderBy", orderBy);
     const res = await fetch(url, { headers: this.#headers(false) });
-    if (!res.ok) {
-      const message = await res.text();
-      throw new Error(`Memos list/search failed ${res.status}: ${message}`);
-    }
+    if (!res.ok) throw new Error(`Memos list/search failed ${res.status}: ${await res.text()}`);
     const body = await res.json() as { memos?: MemoRecord[]; items?: MemoRecord[] } | MemoRecord[];
-    if (Array.isArray(body)) return body;
-    return body.memos || body.items || [];
+    return Array.isArray(body) ? body : body.memos || body.items || [];
   }
 
   async listPluginMemos(pageSize = 200): Promise<MemoRecord[]> {

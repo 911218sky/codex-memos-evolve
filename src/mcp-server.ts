@@ -7,7 +7,7 @@ import { EvolveEngine } from "./evolver.js";
 
 const server = new McpServer({
   name: "codex-memos-evolve",
-  version: "0.1.1"
+  version: "0.1.2"
 });
 
 server.tool(
@@ -23,7 +23,7 @@ server.tool(
 
 server.tool(
   "memos_evolve_write",
-  "Write a compact AI-first memory record to Memos. Use work for active plans, decision for durable choices, trace for supporting evidence, and feedback for corrections.",
+  "Write a compact AI-first memory record to Memos. Use work for active plans, decision for durable choices, trace for supporting evidence, and feedback for corrections. For user preferences/facts/statements, keep the existing record types and tag them with values like #subject/user and #kind/preference.",
   {
     project: z.string().default("default"),
     recordType: z.enum(["trace", "work", "decision", "feedback"]).default("trace"),
@@ -45,6 +45,23 @@ server.tool(
     ttlDays: z.number().int().min(1).max(365).optional().describe("Optional time-to-live in days for short or temporary memories.")
   },
   async (input) => withEngine((engine) => engine.write(input))
+);
+
+server.tool(
+  "memos_evolve_search",
+  "Search project memory by query and tags. Use index detail for compact results and full detail only when you need the full memo bodies.",
+  {
+    project: z.string().default("default"),
+    query: z.string().default(""),
+    type: z.enum(["trace", "work", "decision", "policy", "skill", "feedback", "maintenance"]).optional(),
+    topic: z.string().default(""),
+    status: z.enum(["active", "superseded", "expired"]).optional(),
+    state: z.enum(["planned", "in_progress", "blocked", "done", "cancelled"]).optional(),
+    filter: z.string().default("").describe("Optional native Memos CEL filter composed with the built-in project/query/type/topic/status/state filters. Native CEL passthrough applies in memos-api mode; local-json keeps simple built-in filtering only."),
+    limit: z.number().int().min(1).max(50).default(10),
+    detail: z.enum(["index", "full"]).default("index")
+  },
+  async (input) => withEngine((engine) => engine.search(input))
 );
 
 server.tool(

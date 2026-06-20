@@ -2,8 +2,26 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { MemosClient } from "../src/memos-client.js";
 import { EvolveEngine } from "../src/evolver.js";
+
+class CapturingMemosClient extends MemosClient {
+  capturedListArgs: { filter?: string; orderBy?: string; pageSize?: number } | undefined;
+
+  override async listMemos({
+    filter = "",
+    orderBy = "",
+    pageSize = 50
+  }: {
+    filter?: string;
+    orderBy?: string;
+    pageSize?: number;
+  } = {}): Promise<ReturnType<MemosClient["listMemos"]> extends Promise<infer T> ? T : never> {
+    this.capturedListArgs = { filter, orderBy, pageSize };
+    return [];
+  }
+}
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-memos-evolve-"));
 
@@ -211,6 +229,45 @@ secret contaminated policy
 Use api_key = FAKE_API_KEY_VALUE_123456
 `);
 
+await client.createMemo(`#codex-memos-evolve #type/trace #status/active #project/smoke #date/2020-01-01 #memory/long #topic/search
+
+## Summary
+README exact phrase ranking target
+
+## Task
+README exact phrase ranking target
+
+## Outcome
+This should rank first for the exact phrase query.
+
+## Observations
+- Exact phrase and summary hits should outrank loose partial matches.
+
+## Corrections
+- None
+
+## Value
+2
+`);
+
+await client.createMemo(`#codex-memos-evolve #type/trace #status/active #project/smoke #date/2020-01-01 #memory/long #topic/search
+
+## Task
+README target
+
+## Outcome
+This is only a partial match.
+
+## Observations
+- It should rank below the exact phrase match.
+
+## Corrections
+- None
+
+## Value
+2
+`);
+
 const reflection = await engine.reflect({ project: "smoke", minSupport: 2 });
 assert.equal(reflection.promoted.length >= 1, true);
 
@@ -223,6 +280,11 @@ assert.equal(activePluginPolicies.length, 1);
 assert.equal(activePluginSkills.length, 1);
 assert.equal(String(activePluginPolicies[0]?.content || "").includes("#version/2"), true);
 assert.equal(String(activePluginSkills[0]?.content || "").includes("#version/2"), true);
+assert.match(String(activePluginPolicies[0]?.content || ""), /## Evidence/);
+assert.match(String(activePluginPolicies[0]?.content || ""), /memos\/\d+/);
+assert.match(String(activePluginPolicies[0]?.content || ""), /## Source Memos/);
+assert.match(String(activePluginSkills[0]?.content || ""), /## Evidence/);
+assert.match(String(activePluginSkills[0]?.content || ""), /memos\/\d+/);
 
 await engine.feedback({
   project: "smoke",
@@ -244,6 +306,71 @@ assert.equal(recall.recall.includes("FAKE_API_KEY_VALUE"), false);
 assert.equal(recall.recall.includes("docs strategy"), false);
 assert.match(recall.recall, /version=2/);
 assert.equal(recall.recall.includes("Expired scratch note"), false);
+
+const wrapperClient = new CapturingMemosClient({ baseUrl: "http://memos.test:5230", token: "test-token" });
+await wrapperClient.searchMemos(String.raw`folder\name "quoted"`, 7);
+assert.equal(wrapperClient.capturedListArgs?.filter, String.raw`content.contains("folder\\name \"quoted\"")`);
+assert.equal(wrapperClient.capturedListArgs?.pageSize, 7);
+
+const remoteCalls: URL[] = [];
+const originalFetch = globalThis.fetch;
+globalThis.fetch = (async (input: string | URL) => {
+  const url = new URL(String(input));
+  remoteCalls.push(url);
+  return new Response(JSON.stringify({ memos: [] }), { status: 200 });
+}) as typeof fetch;
+
+try {
+  const searchInput = {
+    project: "smoke",
+    query: "plugin memory",
+    type: "decision",
+    topic: "docs",
+    status: "active",
+    state: "done",
+    filter: 'pinned || has_link || has_code'
+  } as const;
+
+  await new EvolveEngine(new MemosClient({ baseUrl: "http://memos.test:5230", token: "test-token" })).search(searchInput);
+
+  const filter = remoteCalls.at(-1)?.searchParams.get("filter") || "";
+  assert.equal(filter.includes('content.contains("#project/smoke")'), true);
+  assert.equal(filter.includes('content.contains("plugin")'), true);
+  assert.equal(filter.includes('content.contains("memory")'), true);
+  assert.equal(filter.includes('content.contains("#type/decision")'), true);
+  assert.equal(filter.includes('content.contains("#topic/docs")') || filter.includes('content.contains("#skill/docs")'), true);
+  assert.equal(filter.includes('content.contains("#status/active")'), true);
+  assert.equal(filter.includes('content.contains("#state/done")'), true);
+  assert.equal(filter.includes('pinned || has_link || has_code'), true);
+  assert.equal(remoteCalls.at(-1)?.searchParams.get("orderBy"), "pinned desc, update_time desc");
+} finally {
+  globalThis.fetch = originalFetch;
+}
+
+await engine.recordTrace({
+  project: "smoke",
+  recordType: "decision",
+  summary: "User prefers concise final answers",
+  why: "The user explicitly asked for shorter close-outs",
+  consequences: ["Default to concise summaries"],
+  state: "done",
+  tags: ["#subject/user", "#kind/preference", "answers"]
+});
+
+await engine.recordTrace({
+  project: "smoke",
+  task: "Capture what the user said about workflow",
+  outcome: "User said to use native Memos filtering when possible",
+  observations: ["User said to use Memos expressions directly when useful"],
+  value: 3,
+  tags: ["#subject/user", "#kind/user-said", "workflow"]
+});
+
+const recallWithUserKnowledge = await engine.recall({ project: "smoke", task: "Prepare a concise answer", maxTokens: 1200 });
+assert.equal(recallWithUserKnowledge.recall.includes("## User Knowledge"), true);
+assert.equal(recallWithUserKnowledge.recall.includes("concise final answers"), true);
+assert.equal(recallWithUserKnowledge.recall.includes("[preference]"), true);
+assert.equal(recallWithUserKnowledge.recall.split("User prefers concise final answers").length - 1, 1);
 
 const dryRunMaintenance = await engine.maintain({ project: "smoke", apply: false, shortMemoryTtlDays: 1 });
 assert.equal(dryRunMaintenance.applied, false);
@@ -280,6 +407,83 @@ assert.equal(postMaintenanceRecall.recall.includes("Legacy scratch note"), false
 const temporaryRecall = await engine.recall({ project: "smoke", task: "Temporary branch note", maxTokens: 900 });
 assert.equal(temporaryRecall.recall.includes("Temporary branch note"), true);
 
+const searchIndex = await engine.search({
+  project: "smoke",
+  query: "README",
+  type: "trace",
+  limit: 3,
+  detail: "index"
+});
+assert.equal(searchIndex.results.length >= 2, true);
+assert.equal(searchIndex.results.every((item) => item.record_type === "trace"), true);
+assert.equal(searchIndex.results.some((item) => item.summary.includes("Write a Codex plugin README")), true);
+assert.equal(searchIndex.output.includes("Search Results"), true);
+
+const searchFull = await engine.search({
+  project: "smoke",
+  query: "README",
+  type: "trace",
+  limit: 2,
+  detail: "full"
+});
+assert.equal(searchFull.results.length >= 1, true);
+assert.equal(searchFull.output.includes("## Memo"), true);
+assert.equal(searchFull.output.includes("README was useful"), true);
+
+const searchByTopic = await engine.search({
+  project: "smoke",
+  topic: "plugin",
+  type: "policy",
+  limit: 5,
+  detail: "index"
+});
+assert.equal(searchByTopic.results.length >= 1, true);
+assert.equal(searchByTopic.results.every((item) => item.record_type === "policy"), true);
+
+const searchRanking = await engine.search({
+  project: "smoke",
+  query: "README exact phrase ranking target",
+  type: "trace",
+  limit: 3,
+  detail: "index"
+});
+assert.equal(searchRanking.results[0]?.summary.includes("README exact phrase ranking target"), true);
+
+const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8")) as {
+  scripts?: Record<string, string>;
+};
+assert.equal(typeof packageJson.scripts?.["plugin:refresh"], "string");
+assert.equal(fs.existsSync(path.join(process.cwd(), "scripts/refresh-plugin.js")), true);
+
+const refreshPluginModule = await import(pathToFileURL(path.join(process.cwd(), "scripts/refresh-plugin.js")).href) as {
+  resolvePluginWorkdir?: (options?: {
+    root?: string;
+    pluginName?: string;
+    explicitWorkdir?: string;
+  }) => string;
+};
+assert.equal(typeof refreshPluginModule.resolvePluginWorkdir, "function");
+const refreshFixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "codex-memos-evolve-refresh-"));
+const simulatedWorkspace = path.join(refreshFixtureRoot, "workspace");
+const simulatedRepo = path.join(simulatedWorkspace, "codex-memos-evolve");
+fs.mkdirSync(path.join(simulatedWorkspace, ".tools", "codex", "config", "plugins", "cache", "sky-tools", "demo-plugin", "0.0.1"), { recursive: true });
+fs.mkdirSync(simulatedRepo, { recursive: true });
+assert.equal(
+  refreshPluginModule.resolvePluginWorkdir?.({
+    root: simulatedRepo,
+    pluginName: "demo-plugin"
+  }),
+  simulatedWorkspace
+);
+assert.equal(
+  refreshPluginModule.resolvePluginWorkdir?.({
+    root: simulatedRepo,
+    pluginName: "demo-plugin",
+    explicitWorkdir: path.join(simulatedWorkspace, "custom-root")
+  }),
+  path.join(simulatedWorkspace, "custom-root")
+);
+
 const trivial = await engine.recall({ project: "smoke", task: "what time is it?", maxTokens: 900 });
 assert.equal(trivial.skipped, true);
 
@@ -303,9 +507,9 @@ await assert.rejects(() => engine.recordTrace({
 }), /Refusing to store trace/);
 
 const stats = await engine.stats({ project: "smoke" });
-assert.equal(stats.counts.trace, 6);
+assert.equal(stats.counts.trace, 9);
 assert.equal(stats.counts.work, 1);
-assert.equal(stats.counts.decision, 1);
+assert.equal(stats.counts.decision, 2);
 assert.equal(stats.counts.state_in_progress, 1);
 assert.equal(stats.counts.state_done >= 1, true);
 assert.equal(stats.counts.skill >= 1, true);

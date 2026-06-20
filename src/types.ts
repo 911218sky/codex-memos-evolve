@@ -93,6 +93,29 @@ export interface RecallInput {
   maxTokens?: number;
 }
 
+export type SearchDetail = "index" | "full";
+export type SearchRecordType = "trace" | "work" | "decision" | "policy" | "skill" | "feedback" | "maintenance";
+
+export interface SearchInput {
+  project?: string;
+  query?: string;
+  type?: SearchRecordType;
+  topic?: string;
+  status?: "active" | "superseded" | "expired";
+  state?: WorkState;
+  filter?: string;
+  limit?: number;
+  detail?: SearchDetail;
+}
+
+export interface SearchResultItem {
+  memo: string;
+  record_type: string;
+  summary: string;
+  tags: string[];
+  score: number;
+}
+
 export interface ReflectInput {
   project?: string;
   minSupport?: number;

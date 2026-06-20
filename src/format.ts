@@ -149,6 +149,9 @@ ${asBullets(observations)}
 
 export function policyMemo({ project, slugName, title, support, lesson, evidence, version }: PolicyMemoInput): string {
   const date = new Date().toISOString().slice(0, 10);
+  const sourceMemos = evidence
+    .map((item) => item.match(/\bmemos\/[A-Za-z0-9._-]+\b/)?.[0] || "")
+    .filter(Boolean);
   return `${frontMatter([TYPE_TAGS.policy, STATUS_TAGS.active, projectTag(project), skillTag(slugName), `#support/${support}`, `#version/${version}`, `#date/${date}`])}
 
 ## Policy
@@ -160,6 +163,9 @@ ${lesson}
 ## Evidence
 ${asBullets(evidence)}
 
+## Source Memos
+${asBullets(sourceMemos)}
+
 ## Use When
 The current task matches ${slugName} or repeats the evidence pattern.
 `;
@@ -167,6 +173,7 @@ The current task matches ${slugName} or repeats the evidence pattern.
 
 export function skillMemo({ project, slugName, title, support, workflow, version }: SkillMemoInput): string {
   const date = new Date().toISOString().slice(0, 10);
+  const evidence = workflow.filter((item) => /\bmemos\/[A-Za-z0-9._-]+\b/.test(item));
   return `${frontMatter([TYPE_TAGS.skill, STATUS_TAGS.active, projectTag(project), skillTag(slugName), `#support/${support}`, `#version/${version}`, `#date/${date}`])}
 
 ## Skill
@@ -177,6 +184,9 @@ Use this when the task resembles ${slugName} and the recall phase selected this 
 
 ## Workflow
 ${asNumbered(workflow)}
+
+## Evidence
+${asBullets(evidence)}
 
 ## Token Rule
 Prefer this compact skill over replaying raw traces. Only fetch trace evidence when the skill is ambiguous or contradicted.

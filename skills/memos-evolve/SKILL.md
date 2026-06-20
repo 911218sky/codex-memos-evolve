@@ -8,7 +8,7 @@ description: Proactively use the codex-memos-evolve MCP memory tools for non-tri
 Use the `codex-memos-evolve` MCP tools as a small memory loop:
 
 ```text
-recall -> write -> maintain -> reuse
+recall -> write -> search when needed -> maintain -> reuse
 ```
 
 ## Default Behavior
@@ -74,6 +74,17 @@ memos_evolve_maintain
 Use `action: "setup"` once per project to create Memos shortcuts for active work, decisions, and policies.
 
 Start cleanup with `apply: false` to preview candidates. Use `apply: true` when the proposed expired or low-value traces are safe to mark `#status/expired`.
+
+Use targeted search when recall is too compact and you need to pull specific records without widening the default recall context:
+
+```text
+memos_evolve_search
+```
+
+Prefer:
+
+- `detail: "index"` for a compact hit list
+- `detail: "full"` only after filtering down to a few relevant memos
 
 ## What To Store
 

@@ -10,6 +10,12 @@ function has(content, tag) {
 function hasTag(content, tag) {
     return content.split(/\s+/).includes(tag);
 }
+function celContains(value) {
+    return `content.contains("${String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"')}")`;
+}
+function joinClauses(clauses) {
+    return clauses.map((item) => String(item || "").trim()).filter(Boolean).join(" && ");
+}
 function isActive(content) {
     return has(content, STATUS_TAGS.active) && !has(content, STATUS_TAGS.superseded) && !has(content, STATUS_TAGS.expired);
 }
@@ -64,6 +70,24 @@ function extractState(content) {
     if (has(content, STATE_TAGS.cancelled))
         return "cancelled";
     return "";
+}
+function extractTagValue(content, key) {
+    return content.match(new RegExp(`#${key}/([^\\s#]+)`))?.[1] || "";
+}
+function extractTitle(content) {
+    return (extractSection(content, "Summary") ||
+        extractSection(content, "Decision") ||
+        extractSection(content, "Policy") ||
+        extractSection(content, "Skill") ||
+        extractSection(content, "Task") ||
+        extractSection(content, "Feedback") ||
+        "Unspecified").replace(/\s+/g, " ").slice(0, 180);
+}
+function isUserKnowledgeMemo(content) {
+    return hasTag(content, "#subject/user");
+}
+function extractKind(content) {
+    return extractTagValue(content, "kind") || "note";
 }
 function daysSince(date, now = new Date()) {
     if (!date)
@@ -126,7 +150,8 @@ function evidenceFor(traces) {
         const content = contentOf(memo);
         const task = extractSection(content, "Task") || extractSection(content, "Summary") || extractSection(content, "Decision");
         const value = extractSection(content, "Value");
-        return `${(task || "Trace").replace(/\s+/g, " ").slice(0, 160)}${value ? ` (value ${value})` : ""}`;
+        const memoRef = String(memo.name || memo.id || "");
+        return `${memoRef}: ${(task || "Trace").replace(/\s+/g, " ").slice(0, 160)}${value ? ` (value ${value})` : ""}`;
     });
 }
 function sameMemo(a, b) {
@@ -209,6 +234,94 @@ function summarizeTraceMemo(memo) {
     const value = extractValue(content);
     return `- ${task.replace(/\s+/g, " ").slice(0, 180)} [value=${value}]`;
 }
+function extractRecordType(content) {
+    if (has(content, TYPE_TAGS.work))
+        return "work";
+    if (has(content, TYPE_TAGS.decision))
+        return "decision";
+    if (has(content, TYPE_TAGS.policy))
+        return "policy";
+    if (has(content, TYPE_TAGS.skill))
+        return "skill";
+    if (has(content, TYPE_TAGS.feedback))
+        return "feedback";
+    if (has(content, TYPE_TAGS.maintenance))
+        return "maintenance";
+    return "trace";
+}
+function summarizeSearchMemo(memo) {
+    const content = contentOf(memo);
+    return (extractSection(content, "Summary") ||
+        extractSection(content, "Decision") ||
+        extractSection(content, "Policy") ||
+        extractSection(content, "Skill") ||
+        extractSection(content, "Task") ||
+        extractSection(content, "Feedback") ||
+        "Unspecified").replace(/\s+/g, " ").slice(0, 180);
+}
+function extractAllTags(content) {
+    return (content.match(/#[^\s#]+/g) || []).slice(0, 20);
+}
+function countOccurrences(content, term) {
+    if (!term)
+        return 0;
+    return content.split(term).length - 1;
+}
+function highSignalSearchText(content) {
+    return [
+        extractSection(content, "Summary"),
+        extractSection(content, "Decision"),
+        extractSection(content, "Policy"),
+        extractSection(content, "Skill"),
+        extractSection(content, "Task"),
+        extractSection(content, "Feedback")
+    ]
+        .filter(Boolean)
+        .join("\n")
+        .toLowerCase();
+}
+function memoScore(memo, queryTerms, topic) {
+    const rawContent = contentOf(memo);
+    const content = rawContent.toLowerCase();
+    const highSignal = highSignalSearchText(rawContent);
+    const phrase = queryTerms.join(" ").trim();
+    const matchedTerms = new Set();
+    let score = 0;
+    if (phrase && content.includes(phrase))
+        score += 30;
+    if (phrase && highSignal.includes(phrase))
+        score += 20;
+    for (const term of queryTerms) {
+        if (!term)
+            continue;
+        if (content.includes(term)) {
+            matchedTerms.add(term);
+            score += 4;
+            score += Math.min(3, countOccurrences(content, term));
+        }
+        if (highSignal.includes(term))
+            score += 8;
+    }
+    score += matchedTerms.size * 6;
+    if (topic && (hasTag(contentOf(memo), `#topic/${slug(topic)}`) || hasTag(contentOf(memo), skillTag(topic))))
+        score += 8;
+    if (isActive(rawContent))
+        score += 4;
+    if (extractPinned(memo, contentOf(memo)))
+        score += 3;
+    score += Math.min(6, extractSupport(rawContent));
+    return score;
+}
+function toSearchResultItem(memo, score) {
+    const content = contentOf(memo);
+    return {
+        memo: String(memo.name || memo.id || ""),
+        record_type: extractRecordType(content),
+        summary: summarizeSearchMemo(memo),
+        tags: extractAllTags(content),
+        score
+    };
+}
 function promotionTopics(traces, minSupport) {
     const byTopic = new Map();
     for (const trace of traces) {
@@ -264,10 +377,20 @@ export class EvolveEngine {
             const bScore = Number(extractPinned(b, bContent)) * 100 + Number(bTask.hasIncompleteTasks) * 50 + Number(bTask.hasTaskList) * 10;
             return bScore - aScore;
         });
-        const decisions = activeProject.filter((memo) => has(contentOf(memo), TYPE_TAGS.decision));
+        const decisions = activeProject.filter((memo) => has(contentOf(memo), TYPE_TAGS.decision) && !isUserKnowledgeMemo(contentOf(memo)));
         const skills = latestBySkill(activeProject.filter((memo) => has(contentOf(memo), TYPE_TAGS.skill)), feedbackScore).sort(byRecallScore(feedbackScore, task));
         const policies = latestBySkill(activeProject.filter((memo) => has(contentOf(memo), TYPE_TAGS.policy)), feedbackScore).sort(byRecallScore(feedbackScore, task));
-        const traces = activeProject.filter((memo) => has(contentOf(memo), TYPE_TAGS.trace)).slice(0, 5);
+        const traces = activeProject
+            .filter((memo) => has(contentOf(memo), TYPE_TAGS.trace) && !isUserKnowledgeMemo(contentOf(memo)))
+            .slice(0, 5);
+        const userKnowledge = activeProject
+            .filter((memo) => isUserKnowledgeMemo(contentOf(memo)))
+            .sort((a, b) => {
+            const aType = extractRecordType(contentOf(a)) === "decision" ? 1 : 0;
+            const bType = extractRecordType(contentOf(b)) === "decision" ? 1 : 0;
+            return bType - aType || String(b.updateTime || "").localeCompare(String(a.updateTime || ""));
+        })
+            .slice(0, 4);
         const lines = [
             `# Memos Evolve Recall (${this.client.mode})`,
             `Task: ${task || "unspecified"}`,
@@ -277,6 +400,11 @@ export class EvolveEngine {
             "",
             "## Decisions",
             ...(decisions.length ? decisions.slice(0, 5).map(summarizeDecisionMemo) : ["- None"]),
+            "",
+            "## User Knowledge",
+            ...(userKnowledge.length
+                ? userKnowledge.map((memo) => `- [${extractKind(contentOf(memo))}] ${extractTitle(contentOf(memo))}`)
+                : ["- None"]),
             "",
             "## Policies",
             ...(policies.length ? policies.slice(0, 5).map((memo) => summarizeMemo(memo, "Policy")) : ["- None"]),
@@ -298,6 +426,52 @@ export class EvolveEngine {
             recall_tokens_estimate: recallTokens,
             estimated_tokens_saved: Math.max(0, rawTokens - recallTokens),
             recall: truncateByTokens(compact || "No matching Memos Evolve memory found.", maxTokens)
+        };
+    }
+    async search({ project = DEFAULT_PROJECT, query = "", type, topic = "", status, state, filter = "", limit = 10, detail = "index" } = {}) {
+        const queryTerms = String(query || "").split(/\s+/).filter(Boolean);
+        const normalizedQueryTerms = queryTerms.map((term) => term.toLowerCase());
+        const remoteFilter = joinClauses([
+            celContains("#codex-memos-evolve"),
+            celContains(projectTag(project)),
+            ...queryTerms.map(celContains),
+            type ? celContains(`#type/${type}`) : "",
+            topic ? `(${celContains(`#topic/${slug(topic)}`)} || ${celContains(skillTag(topic))})` : "",
+            status ? celContains(`#status/${status}`) : "",
+            state ? celContains(`#state/${state}`) : "",
+            filter ? `(${filter})` : ""
+        ]);
+        const memos = this.client.mode === "memos-api"
+            ? await this.client.listMemos({ filter: remoteFilter, orderBy: "pinned desc, update_time desc", pageSize: 500 })
+            : await this.client.listPluginMemos(500);
+        const filtered = memos
+            .filter((memo) => hasTag(contentOf(memo), projectTag(project)))
+            .filter((memo) => !looksSecret(contentOf(memo)))
+            .filter((memo) => !type || extractRecordType(contentOf(memo)) === type)
+            .filter((memo) => !topic || hasTag(contentOf(memo), `#topic/${slug(topic)}`) || hasTag(contentOf(memo), skillTag(topic)))
+            .filter((memo) => !status || has(contentOf(memo), `#status/${status}`))
+            .filter((memo) => !state || has(contentOf(memo), `#state/${state}`))
+            .map((memo) => ({ memo, score: memoScore(memo, normalizedQueryTerms, topic) }))
+            .filter(({ memo, score }) => queryTerms.length === 0 || score > 0 || normalizedQueryTerms.every((term) => contentOf(memo).toLowerCase().includes(term)))
+            .sort((a, b) => b.score - a.score || String(b.memo.updateTime || "").localeCompare(String(a.memo.updateTime || "")))
+            .slice(0, Math.max(1, Math.min(limit, 50)));
+        const results = filtered.map(({ memo, score }) => toSearchResultItem(memo, score));
+        const output = detail === "full"
+            ? [
+                "# Search Results",
+                ...filtered.map(({ memo }, index) => `\n## Memo ${index + 1}\n${contentOf(memo)}`)
+            ].join("\n")
+            : [
+                "# Search Results",
+                ...results.map((item) => `- ${item.summary} [type=${item.record_type}, score=${item.score}, memo=${item.memo}]`)
+            ].join("\n");
+        return {
+            mode: this.client.mode,
+            project,
+            query,
+            detail,
+            results,
+            output
         };
     }
     async write(input) {
@@ -357,7 +531,8 @@ export class EvolveEngine {
                     `Recall this skill when the task mentions ${topic} or nearby wording.`,
                     lesson,
                     "Prefer the compact workflow over retrieving every historical trace.",
-                    "After finishing, record whether the skill helped and what should change."
+                    "After finishing, record whether the skill helped and what should change.",
+                    ...evidence
                 ]
             }));
             for (const oldMemo of [...existingPolicies, ...existingSkills].filter((memo) => {

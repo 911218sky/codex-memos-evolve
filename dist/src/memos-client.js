@@ -13,6 +13,9 @@ function memoIdFromName(name) {
         return "";
     return String(name).split("/").pop() || "";
 }
+function escapeCelStringLiteral(value) {
+    return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+}
 function loadDotEnv(file) {
     if (!fs.existsSync(file))
         return {};
@@ -93,20 +96,25 @@ export class MemosClient {
     async searchMemos(query, pageSize = 50) {
         if (this.mode === "local-json")
             return this.#searchLocal(query, pageSize);
+        return this.listMemos({
+            pageSize,
+            filter: query ? `content.contains("${escapeCelStringLiteral(query)}")` : ""
+        });
+    }
+    async listMemos({ filter = "", orderBy = "", pageSize = 50 } = {}) {
+        if (this.mode === "local-json")
+            return this.#readLocal().slice(0, pageSize);
         const url = new URL(`${this.baseUrl}/api/v1/memos`);
         url.searchParams.set("pageSize", String(pageSize));
-        if (query) {
-            url.searchParams.set("filter", `content.contains("${String(query).replaceAll('"', '\\"')}")`);
-        }
+        if (filter)
+            url.searchParams.set("filter", filter);
+        if (orderBy)
+            url.searchParams.set("orderBy", orderBy);
         const res = await fetch(url, { headers: this.#headers(false) });
-        if (!res.ok) {
-            const message = await res.text();
-            throw new Error(`Memos list/search failed ${res.status}: ${message}`);
-        }
+        if (!res.ok)
+            throw new Error(`Memos list/search failed ${res.status}: ${await res.text()}`);
         const body = await res.json();
-        if (Array.isArray(body))
-            return body;
-        return body.memos || body.items || [];
+        return Array.isArray(body) ? body : body.memos || body.items || [];
     }
     async listPluginMemos(pageSize = 200) {
         return this.searchMemos("#codex-memos-evolve", pageSize);

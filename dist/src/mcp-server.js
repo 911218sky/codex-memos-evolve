@@ -6,14 +6,14 @@ import { MemosClient } from "./memos-client.js";
 import { EvolveEngine } from "./evolver.js";
 const server = new McpServer({
     name: "codex-memos-evolve",
-    version: "0.1.1"
+    version: "0.1.2"
 });
 server.tool("memos_evolve_recall", "Call at the start of non-trivial Codex work to recall compact, token-aware Memos guidance for the current task. Use before code edits, debugging, docs, reviews, plugin/MCP work, subagent coordination, and repeated workflows unless the task is clearly trivial.", {
     task: z.string().describe("Current user request plus the immediate work you are about to do."),
     project: z.string().default("default").describe("Project or repository name, for example codex-memos-evolve."),
     maxTokens: z.number().int().min(200).max(4000).default(1400).describe("Approximate token budget for recall output.")
 }, async (input) => withEngine((engine) => engine.recall(input)));
-server.tool("memos_evolve_write", "Write a compact AI-first memory record to Memos. Use work for active plans, decision for durable choices, trace for supporting evidence, and feedback for corrections.", {
+server.tool("memos_evolve_write", "Write a compact AI-first memory record to Memos. Use work for active plans, decision for durable choices, trace for supporting evidence, and feedback for corrections. For user preferences/facts/statements, keep the existing record types and tag them with values like #subject/user and #kind/preference.", {
     project: z.string().default("default"),
     recordType: z.enum(["trace", "work", "decision", "feedback"]).default("trace"),
     state: z.enum(["planned", "in_progress", "blocked", "done", "cancelled"]).optional(),
@@ -33,6 +33,17 @@ server.tool("memos_evolve_write", "Write a compact AI-first memory record to Mem
     memory: z.enum(["short", "long"]).default("long").describe("Use short for temporary task-only facts; they can expire during maintenance."),
     ttlDays: z.number().int().min(1).max(365).optional().describe("Optional time-to-live in days for short or temporary memories.")
 }, async (input) => withEngine((engine) => engine.write(input)));
+server.tool("memos_evolve_search", "Search project memory by query and tags. Use index detail for compact results and full detail only when you need the full memo bodies.", {
+    project: z.string().default("default"),
+    query: z.string().default(""),
+    type: z.enum(["trace", "work", "decision", "policy", "skill", "feedback", "maintenance"]).optional(),
+    topic: z.string().default(""),
+    status: z.enum(["active", "superseded", "expired"]).optional(),
+    state: z.enum(["planned", "in_progress", "blocked", "done", "cancelled"]).optional(),
+    filter: z.string().default("").describe("Optional native Memos CEL filter composed with the built-in project/query/type/topic/status/state filters. Native CEL passthrough applies in memos-api mode; local-json keeps simple built-in filtering only."),
+    limit: z.number().int().min(1).max(50).default(10),
+    detail: z.enum(["index", "full"]).default("index")
+}, async (input) => withEngine((engine) => engine.search(input)));
 server.tool("memos_evolve_maintain", "Maintain AI memory with one tool: setup project shortcuts, preview/apply cleanup, expire low-value traces, and fold repeated evidence into compact policies and skills.", {
     project: z.string().default("default"),
     action: z.enum(["cleanup", "setup"]).default("cleanup"),

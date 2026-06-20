@@ -45,10 +45,10 @@ const discoveryTransport = new StdioClientTransport({
   cwd: root,
   env: envWithoutMemos()
 });
-const discoveryClient = new Client({ name: "codex-memos-evolve-discovery-test", version: "0.1.1" });
+const discoveryClient = new Client({ name: "codex-memos-evolve-discovery-test", version: "0.1.2" });
 await discoveryClient.connect(discoveryTransport);
 const discoveryTools = await discoveryClient.listTools();
-assert.equal(discoveryTools.tools.length, 3);
+assert.equal(discoveryTools.tools.length, 4);
 await discoveryClient.close();
 
 const transport = new StdioClientTransport({
@@ -63,7 +63,7 @@ const transport = new StdioClientTransport({
   }
 });
 
-const client = new Client({ name: "codex-memos-evolve-test", version: "0.1.1" });
+const client = new Client({ name: "codex-memos-evolve-test", version: "0.1.2" });
 await client.connect(transport);
 
 function firstText(result: unknown): string {
@@ -76,8 +76,15 @@ const names = tools.tools.map((tool) => tool.name);
 assert.deepEqual(names.sort(), [
   "memos_evolve_maintain",
   "memos_evolve_recall",
+  "memos_evolve_search",
   "memos_evolve_write"
 ]);
+const searchTool = tools.tools.find((tool) => tool.name === "memos_evolve_search");
+assert.ok(searchTool);
+const filterSchema = searchTool.inputSchema.properties?.filter;
+assert.ok(filterSchema);
+assert.equal((filterSchema as { type?: unknown }).type, "string");
+assert.ok(!searchTool.inputSchema.required?.includes("filter"));
 
 await client.callTool({
   name: "memos_evolve_write",
@@ -111,6 +118,32 @@ const recall = await client.callTool({
 const text = firstText(recall);
 assert.match(text, /Memos Evolve Recall/);
 assert.match(text, /Active Work/);
+
+const searchIndex = await client.callTool({
+  name: "memos_evolve_search",
+  arguments: {
+    project: "mcp-smoke",
+    query: "Test MCP",
+    type: "work",
+    limit: 5,
+    detail: "index"
+  }
+});
+assert.match(firstText(searchIndex), /Search Results/);
+assert.match(firstText(searchIndex), /Test MCP work memo/);
+
+const searchFull = await client.callTool({
+  name: "memos_evolve_search",
+  arguments: {
+    project: "mcp-smoke",
+    query: "Test MCP",
+    type: "work",
+    limit: 5,
+    detail: "full"
+  }
+});
+assert.match(firstText(searchFull), /## Memo/);
+assert.match(firstText(searchFull), /Confirm generic writer can create work records/);
 
 const setup = await client.callTool({
   name: "memos_evolve_maintain",

@@ -49,6 +49,13 @@ For the `sky-tools` marketplace:
 codex plugin add codex-memos-evolve@sky-tools
 ```
 
+Once that install exists, later updates from this repository can use:
+
+```bash
+git pull
+npm run plugin:refresh
+```
+
 For other Codex setups, first add the marketplace that contains this plugin:
 
 ```bash
